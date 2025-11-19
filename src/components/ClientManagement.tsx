@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Search, Plus, Car, Users, X, FileText } from 'lucide-react'
+import { Search, Plus, Car, Users, X, FileText, Shield } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface Vehicle {
@@ -46,7 +46,15 @@ interface BudgetItem {
 interface Budget {
   id: number
   licenseplate: string
-  items: BudgetItem[]
+  items: {
+    items: BudgetItem[]
+    serviceInfo?: {
+      type: string
+      category: string
+      description: string
+      warranty: boolean
+    }
+  }
   totalparts: number
   createdat: string
 }
@@ -355,15 +363,15 @@ export default function ClientManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold">Gestão de Clientes</h2>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowAddGroup(!showAddGroup)} variant="outline">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <h2 className="text-2xl sm:text-3xl font-bold">Gestão de Clientes</h2>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button onClick={() => setShowAddGroup(!showAddGroup)} variant="outline" className="flex-1 sm:flex-none text-sm">
             <Users className="w-4 h-4 mr-2" />
             Novo Grupo
           </Button>
-          <Button onClick={() => setShowAddVehicle(!showAddVehicle)} className="bg-[#ff8c00] hover:bg-[#e67e00]">
+          <Button onClick={() => setShowAddVehicle(!showAddVehicle)} className="bg-[#ff8c00] hover:bg-[#e67e00] flex-1 sm:flex-none text-sm">
             <Plus className="w-4 h-4 mr-2" />
             Novo Veículo
           </Button>
@@ -372,26 +380,27 @@ export default function ClientManagement() {
 
       {showAddGroup && (
         <Card>
-          <CardHeader>
-            <CardTitle>Criar Novo Grupo</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Criar Novo Grupo</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
             <div>
-              <Label>Nome do Grupo</Label>
+              <Label className="text-sm">Nome do Grupo</Label>
               <Input
                 value={newGroup.name}
                 onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
                 placeholder="Ex: Stand AutoCarros, Cliente Empresa XYZ"
+                className="text-sm"
               />
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 Crie grupos para organizar veículos por stand, cliente ou empresa
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleAddGroup} className="bg-[#ff8c00] hover:bg-[#e67e00]">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={handleAddGroup} className="bg-[#ff8c00] hover:bg-[#e67e00] text-sm">
                 Criar Grupo
               </Button>
-              <Button variant="outline" onClick={() => setShowAddGroup(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setShowAddGroup(false)} className="text-sm">Cancelar</Button>
             </div>
           </CardContent>
         </Card>
@@ -399,56 +408,61 @@ export default function ClientManagement() {
 
       {showAddVehicle && (
         <Card>
-          <CardHeader>
-            <CardTitle>Adicionar Novo Veículo</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Adicionar Novo Veículo</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label>Matrícula *</Label>
+                <Label className="text-sm">Matrícula *</Label>
                 <Input
                   value={newVehicle.licenseplate}
                   onChange={(e) => setNewVehicle({ ...newVehicle, licenseplate: e.target.value })}
                   placeholder="AA-00-BB"
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>Marca *</Label>
+                <Label className="text-sm">Marca *</Label>
                 <Input
                   value={newVehicle.make}
                   onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
                   placeholder="Ex: Toyota"
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>Modelo *</Label>
+                <Label className="text-sm">Modelo *</Label>
                 <Input
                   value={newVehicle.model}
                   onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
                   placeholder="Ex: Corolla"
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>Ano</Label>
+                <Label className="text-sm">Ano</Label>
                 <Input
                   type="number"
                   value={newVehicle.year}
                   onChange={(e) => setNewVehicle({ ...newVehicle, year: parseInt(e.target.value) })}
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>Quilometragem</Label>
+                <Label className="text-sm">Quilometragem</Label>
                 <Input
                   type="number"
                   value={newVehicle.mileage}
                   onChange={(e) => setNewVehicle({ ...newVehicle, mileage: parseInt(e.target.value) })}
                   placeholder="0"
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>Grupo (Opcional)</Label>
+                <Label className="text-sm">Grupo (Opcional)</Label>
                 <select
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded text-sm"
                   value={newVehicle.groupid}
                   onChange={(e) => setNewVehicle({ ...newVehicle, groupid: e.target.value })}
                 >
@@ -459,29 +473,30 @@ export default function ClientManagement() {
                 </select>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleAddVehicle} className="bg-[#ff8c00] hover:bg-[#e67e00]">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={handleAddVehicle} className="bg-[#ff8c00] hover:bg-[#e67e00] text-sm">
                 Adicionar Veículo
               </Button>
-              <Button variant="outline" onClick={() => setShowAddVehicle(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setShowAddVehicle(false)} className="text-sm">Cancelar</Button>
             </div>
           </CardContent>
         </Card>
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle>Pesquisar Veículo por Matrícula</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Pesquisar Veículo por Matrícula</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="Digite a matrícula..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              className="text-sm flex-1"
             />
-            <Button onClick={handleSearch} className="bg-[#ff8c00] hover:bg-[#e67e00]">
+            <Button onClick={handleSearch} className="bg-[#ff8c00] hover:bg-[#e67e00] text-sm w-full sm:w-auto">
               <Search className="w-4 h-4 mr-2" />
               Buscar
             </Button>
@@ -491,52 +506,52 @@ export default function ClientManagement() {
 
       {selectedVehicle && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Histórico do Veículo
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg">Histórico do Veículo</CardTitle>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => setShowBudgetModal(true)}
-                className="bg-[#ff8c00] hover:bg-[#e67e00] text-white"
+                className="bg-[#ff8c00] hover:bg-[#e67e00] text-white text-xs sm:text-sm w-full sm:w-auto"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Ver Orçamentos ({budgetHistory.length})
               </Button>
-            </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-bold text-lg mb-2">
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="mb-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-bold text-base sm:text-lg mb-2">
                 {selectedVehicle.make} {selectedVehicle.model} ({selectedVehicle.year})
               </h3>
-              <p className="text-sm text-gray-600">Matrícula: {selectedVehicle.licenseplate}</p>
-              <p className="text-sm text-gray-600">Quilometragem: {selectedVehicle.mileage || 0} km</p>
-              <p className="text-sm text-gray-600">Status: {selectedVehicle.status || 'active'}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Matrícula: {selectedVehicle.licenseplate}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Quilometragem: {selectedVehicle.mileage || 0} km</p>
+              <p className="text-xs sm:text-sm text-gray-600">Status: {selectedVehicle.status || 'active'}</p>
               {selectedVehicle.groupid && (
-                <p className="text-sm text-gray-600">
+                <p className="text-xs sm:text-sm text-gray-600">
                   Grupo: {getGroupName(selectedVehicle.groupid)}
                 </p>
               )}
             </div>
 
             <div className="space-y-4">
-              <h4 className="font-semibold">Histórico de Serviços</h4>
+              <h4 className="font-semibold text-sm sm:text-base">Histórico de Serviços</h4>
               {serviceHistory.length === 0 ? (
-                <p className="text-gray-500">Nenhum serviço registrado para este veículo.</p>
+                <p className="text-gray-500 text-xs sm:text-sm">Nenhum serviço registrado para este veículo.</p>
               ) : (
                 serviceHistory.map(service => (
-                  <div key={service.id} className="border p-4 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-semibold">
+                  <div key={service.id} className="border p-3 sm:p-4 rounded-lg">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm sm:text-base">
                           {service.createdat ? new Date(service.createdat).toLocaleDateString('pt-PT') : 'Data não disponível'}
                         </p>
-                        <p className="text-sm text-gray-600">Status: {service.status || 'pending'}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">Status: {service.status || 'pending'}</p>
                       </div>
-                      <p className="font-bold text-lg">€{(service.cost || 0).toFixed(2)}</p>
+                      <p className="font-bold text-base sm:text-lg">€{(service.cost || 0).toFixed(2)}</p>
                     </div>
-                    <p className="text-gray-700">{service.description}</p>
+                    <p className="text-gray-700 text-xs sm:text-sm">{service.description}</p>
                   </div>
                 ))
               )}
@@ -545,37 +560,38 @@ export default function ClientManagement() {
         </Card>
       )}
 
-      {/* Modal Flutuante de Orçamentos */}
+      {/* Modal Flutuante de Orçamentos - Otimizado para Mobile */}
       {showBudgetModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-2xl font-bold">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] sm:max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+              <h3 className="text-lg sm:text-2xl font-bold truncate pr-2">
                 Histórico de Orçamentos - {selectedVehicle?.licenseplate}
               </h3>
               <Button 
                 variant="ghost" 
                 size="sm"
                 onClick={() => setShowBudgetModal(false)}
+                className="flex-shrink-0"
               >
                 <X className="w-5 h-5" />
               </Button>
             </div>
             
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-80px)] sm:max-h-[calc(80vh-120px)]">
               {budgetHistory.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500 text-lg">Nenhum orçamento encontrado para esta matrícula.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <FileText className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 text-sm sm:text-lg">Nenhum orçamento encontrado para esta matrícula.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {budgetHistory.map((budget, index) => (
-                    <div key={budget.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="font-bold text-lg">Orçamento #{budgetHistory.length - index}</p>
-                          <p className="text-sm text-gray-600">
+                    <div key={budget.id} className="border rounded-lg p-3 sm:p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0 mb-3">
+                        <div className="flex-1">
+                          <p className="font-bold text-base sm:text-lg">Orçamento #{budgetHistory.length - index}</p>
+                          <p className="text-xs sm:text-sm text-gray-600">
                             {new Date(budget.createdat).toLocaleDateString('pt-PT', {
                               day: '2-digit',
                               month: 'long',
@@ -586,32 +602,63 @@ export default function ClientManagement() {
                           </p>
                           <p className="text-xs text-gray-500 mt-1">Oficina: Anónimo</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">Total em Peças</p>
-                          <p className="font-bold text-xl text-[#ff8c00]">€{budget.totalparts.toFixed(2)}</p>
+                        <div className="text-left sm:text-right w-full sm:w-auto">
+                          <p className="text-xs sm:text-sm text-gray-600">Total em Peças</p>
+                          <p className="font-bold text-lg sm:text-xl text-[#ff8c00]">€{budget.totalparts.toFixed(2)}</p>
                         </div>
                       </div>
 
+                      {/* Informações do Serviço */}
+                      {budget.items?.serviceInfo && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                          <h4 className="font-semibold text-xs sm:text-sm text-amber-800 mb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Informações do Serviço
+                          </h4>
+                          <div className="space-y-1 text-xs sm:text-sm">
+                            <p className="text-gray-700">
+                              <span className="font-medium">Tipo:</span> {budget.items.serviceInfo.type || 'Não especificado'}
+                            </p>
+                            {budget.items.serviceInfo.category && (
+                              <p className="text-gray-700">
+                                <span className="font-medium">Categoria:</span> {budget.items.serviceInfo.category}
+                              </p>
+                            )}
+                            {budget.items.serviceInfo.description && (
+                              <p className="text-gray-700">
+                                <span className="font-medium">Descrição:</span> {budget.items.serviceInfo.description}
+                              </p>
+                            )}
+                            {budget.items.serviceInfo.warranty && (
+                              <p className="text-green-600 font-medium flex items-center gap-1">
+                                <Shield className="w-3 h-3" />
+                                Em Garantia
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-2 mt-4">
-                        <h4 className="font-semibold text-sm text-gray-700 mb-2">Materiais/Peças:</h4>
-                        {budget.items && budget.items.length > 0 ? (
-                          budget.items.map((item, itemIndex) => (
-                            <div key={itemIndex} className="bg-white p-3 rounded border-l-4 border-[#ff8c00]">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-900">{item.description || 'Sem descrição'}</p>
+                        <h4 className="font-semibold text-xs sm:text-sm text-gray-700 mb-2">Materiais/Peças:</h4>
+                        {budget.items?.items && budget.items.items.length > 0 ? (
+                          budget.items.items.map((item, itemIndex) => (
+                            <div key={itemIndex} className="bg-white p-2 sm:p-3 rounded border-l-4 border-[#ff8c00]">
+                              <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-gray-900 text-xs sm:text-sm">{item.description || 'Sem descrição'}</p>
                                   {item.notes && (
-                                    <p className="text-sm text-gray-600 mt-1">
+                                    <p className="text-xs text-gray-600 mt-1 break-words">
                                       <span className="font-medium">Observações:</span> {item.notes}
                                     </p>
                                   )}
                                 </div>
-                                <p className="font-semibold text-[#ff8c00] ml-4">€{item.partsCost.toFixed(2)}</p>
+                                <p className="font-semibold text-[#ff8c00] text-sm sm:text-base whitespace-nowrap">€{item.partsCost.toFixed(2)}</p>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-gray-500 italic">Nenhum item registrado</p>
+                          <p className="text-xs sm:text-sm text-gray-500 italic">Nenhum item registrado</p>
                         )}
                       </div>
                     </div>
@@ -624,40 +671,40 @@ export default function ClientManagement() {
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle>Todos os Veículos ({filteredVehicles.length})</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Todos os Veículos ({filteredVehicles.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="space-y-4 sm:space-y-6">
             {filteredVehicles.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">Nenhum veículo cadastrado ainda.</p>
+              <p className="text-gray-500 text-center py-6 sm:py-8 text-sm">Nenhum veículo cadastrado ainda.</p>
             ) : (
               Object.entries(vehiclesByGroup).map(([groupId, groupVehicles]) => (
                 <div key={groupId} className="space-y-2">
                   <div className="flex items-center gap-2 mb-3">
-                    <Users className="w-5 h-5 text-[#ff8c00]" />
-                    <h3 className="font-bold text-lg text-[#ff8c00]">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff8c00]" />
+                    <h3 className="font-bold text-base sm:text-lg text-[#ff8c00]">
                       {getGroupName(groupId)} ({groupVehicles.length})
                     </h3>
                   </div>
-                  <div className="space-y-2 pl-4 border-l-2 border-[#ff8c00]">
+                  <div className="space-y-2 pl-2 sm:pl-4 border-l-2 border-[#ff8c00]">
                     {groupVehicles.map(vehicle => (
                       <div
                         key={vehicle.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors gap-3"
                         onClick={() => handleVehicleClick(vehicle)}
                       >
-                        <div className="flex items-center gap-4">
-                          <Car className="w-8 h-8 text-gray-400" />
-                          <div>
-                            <p className="font-semibold">{vehicle.licenseplate}</p>
-                            <p className="text-sm text-gray-600">
+                        <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                          <Car className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sm sm:text-base truncate">{vehicle.licenseplate}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate">
                               {vehicle.make} {vehicle.model} ({vehicle.year})
                             </p>
-                            <p className="text-sm text-gray-500">{vehicle.mileage || 0} km</p>
+                            <p className="text-xs text-gray-500">{vehicle.mileage || 0} km</p>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" className="hover:bg-[#ff8c00] hover:text-white">
+                        <Button variant="outline" size="sm" className="hover:bg-[#ff8c00] hover:text-white text-xs sm:text-sm w-full sm:w-auto">
                           Ver Histórico
                         </Button>
                       </div>

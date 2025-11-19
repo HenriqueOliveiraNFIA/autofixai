@@ -177,49 +177,49 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Carregando dados...</div>
+      <div className="flex items-center justify-center min-h-[50vh] p-4">
+        <div className="text-base sm:text-lg">Carregando dados...</div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold">Dashboard - Visão Geral da Plataforma</h2>
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      <h2 className="text-2xl sm:text-3xl font-bold">Dashboard - Visão Geral da Plataforma</h2>
       
       {/* Estatísticas Globais da Plataforma */}
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-[#ff8c00]">📊 Estatísticas Globais</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <h3 className="text-lg sm:text-xl font-semibold text-[#ff8c00]">📊 Estatísticas Globais</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Card className="border-[#ff8c00] border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Veículos (Plataforma)</CardTitle>
-              <Car className="h-4 w-4 text-[#ff8c00]" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Veículos (Plataforma)</CardTitle>
+              <Car className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff8c00]">{totalVehiclesPlatform}</div>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalVehiclesPlatform}</div>
               <p className="text-xs text-muted-foreground">Todos os veículos cadastrados</p>
             </CardContent>
           </Card>
 
           <Card className="border-[#ff8c00] border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Serviços Totais (Plataforma)</CardTitle>
-              <Wrench className="h-4 w-4 text-[#ff8c00]" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Serviços Totais (Plataforma)</CardTitle>
+              <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff8c00]">{totalServicesPlatform}</div>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalServicesPlatform}</div>
               <p className="text-xs text-muted-foreground">Todos os serviços realizados</p>
             </CardContent>
           </Card>
 
           <Card className="border-[#ff8c00] border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Total (Plataforma)</CardTitle>
-              <TrendingUp className="h-4 w-4 text-[#ff8c00]" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Receita Total (Plataforma)</CardTitle>
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff8c00]">€{totalRevenuePlatform.toFixed(2)}</div>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">€{totalRevenuePlatform.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">Faturamento total</p>
             </CardContent>
           </Card>
@@ -228,26 +228,26 @@ export default function Dashboard() {
 
       {/* Estatísticas Mensais da Plataforma */}
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-blue-600">📅 Estatísticas Mensais (Mês Atual)</h3>
-        <div className="grid gap-4 md:grid-cols-2">
+        <h3 className="text-lg sm:text-xl font-semibold text-blue-600">📅 Estatísticas Mensais (Mês Atual)</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <Card className="border-blue-600 border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Serviços Este Mês</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Serviços Este Mês</CardTitle>
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{servicesThisMonth}</div>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{servicesThisMonth}</div>
               <p className="text-xs text-muted-foreground">Serviços realizados no mês atual</p>
             </CardContent>
           </Card>
 
           <Card className="border-blue-600 border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Este Mês</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Receita Este Mês</CardTitle>
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">€{revenueThisMonth.toFixed(2)}</div>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">€{revenueThisMonth.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">Faturamento do mês atual</p>
             </CardContent>
           </Card>
@@ -256,44 +256,44 @@ export default function Dashboard() {
 
       {/* Estatísticas por Oficina/Cliente */}
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-green-600">🏢 Estatísticas por Oficina/Cliente</h3>
+        <h3 className="text-lg sm:text-xl font-semibold text-green-600">🏢 Estatísticas por Oficina/Cliente</h3>
         {groupStats.length === 0 ? (
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
               <p className="text-sm text-muted-foreground">Nenhum grupo/oficina cadastrado ainda.</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {groupStats.map((stat) => (
               <Card key={stat.groupid} className="border-green-600">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-green-600" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                     {stat.groupname}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="p-4 sm:p-6 pt-0">
+                  <div className="space-y-2 sm:space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Veículos:</span>
-                      <span className="font-bold">{stat.totalVehicles}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Veículos:</span>
+                      <span className="font-bold text-sm sm:text-base">{stat.totalVehicles}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Serviços Totais:</span>
-                      <span className="font-bold">{stat.totalServices}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Serviços Totais:</span>
+                      <span className="font-bold text-sm sm:text-base">{stat.totalServices}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Serviços Este Mês:</span>
-                      <span className="font-bold text-blue-600">{stat.monthlyServices}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Serviços Este Mês:</span>
+                      <span className="font-bold text-blue-600 text-sm sm:text-base">{stat.monthlyServices}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Receita Total:</span>
-                      <span className="font-bold text-green-600">€{stat.totalRevenue.toFixed(2)}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Receita Total:</span>
+                      <span className="font-bold text-green-600 text-sm sm:text-base">€{stat.totalRevenue.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Receita Este Mês:</span>
-                      <span className="font-bold text-blue-600">€{stat.monthlyRevenue.toFixed(2)}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Receita Este Mês:</span>
+                      <span className="font-bold text-blue-600 text-sm sm:text-base">€{stat.monthlyRevenue.toFixed(2)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -304,21 +304,21 @@ export default function Dashboard() {
       </div>
 
       {/* Últimos Veículos e Serviços */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Últimos Veículos Cadastrados</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Últimos Veículos Cadastrados</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {vehicles.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum veículo cadastrado ainda.</p>
             ) : (
               <div className="space-y-2">
                 {vehicles.slice(0, 5).map((vehicle) => (
-                  <div key={vehicle.id} className="flex items-center justify-between border-b pb-2">
-                    <div>
-                      <p className="font-medium">{vehicle.licenseplate}</p>
-                      <p className="text-sm text-muted-foreground">
+                  <div key={vehicle.id} className="flex items-center justify-between border-b pb-2 last:border-b-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm sm:text-base truncate">{vehicle.licenseplate}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
                         {vehicle.make} {vehicle.model} ({vehicle.year})
                       </p>
                     </div>
@@ -330,23 +330,23 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Últimos Serviços</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Últimos Serviços</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {services.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum serviço registrado ainda.</p>
             ) : (
               <div className="space-y-2">
                 {services.slice(0, 5).map((service) => (
-                  <div key={service.id} className="flex items-center justify-between border-b pb-2">
-                    <div>
-                      <p className="font-medium">{service.description}</p>
-                      <p className="text-sm text-muted-foreground">
+                  <div key={service.id} className="flex items-center justify-between border-b pb-2 last:border-b-0 gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm sm:text-base truncate">{service.description}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {service.createdat ? new Date(service.createdat).toLocaleDateString('pt-PT') : 'Data não disponível'}
                       </p>
                     </div>
-                    <p className="font-bold">€{(service.cost || 0).toFixed(2)}</p>
+                    <p className="font-bold text-sm sm:text-base whitespace-nowrap">€{(service.cost || 0).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
@@ -357,8 +357,8 @@ export default function Dashboard() {
 
       {/* Aviso sobre dados limpos */}
       <Card className="bg-green-50 border-green-400">
-        <CardContent className="pt-6">
-          <p className="text-sm text-green-800">
+        <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+          <p className="text-xs sm:text-sm text-green-800">
             ✅ <strong>Sistema Limpo:</strong> Todos os dados demo foram removidos. Novos usuários começam com estatísticas zeradas.
           </p>
         </CardContent>
