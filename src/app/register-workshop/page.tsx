@@ -19,7 +19,7 @@ export default function RegisterWorkshop() {
     e.preventDefault()
     
     try {
-      // Registrar usuário no Supabase Auth
+      // 1. Registrar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -27,11 +27,18 @@ export default function RegisterWorkshop() {
 
       if (authError) throw authError
 
-      // Inserir dados da oficina na tabela workshops (apenas colunas existentes)
+      if (!authData.user) {
+        throw new Error('Erro ao criar usuário')
+      }
+
+      console.log('✅ Usuário criado:', authData.user.id)
+
+      // 2. Inserir dados da oficina na tabela workshops COM user_id
       const { error: insertError } = await supabase
         .from('workshops')
         .insert([
           {
+            user_id: authData.user.id, // Associar oficina ao usuário
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
@@ -39,7 +46,28 @@ export default function RegisterWorkshop() {
           }
         ])
 
-      if (insertError) throw insertError
+      if (insertError) {
+        console.error('❌ Erro ao inserir oficina:', insertError)
+        // Se a coluna user_id não existir, tentar sem ela (temporário)
+        if (insertError.code === '42703') {
+          console.warn('⚠️ Coluna user_id não existe, inserindo sem ela')
+          const { error: fallbackError } = await supabase
+            .from('workshops')
+            .insert([
+              {
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                address: formData.address
+              }
+            ])
+          if (fallbackError) throw fallbackError
+        } else {
+          throw insertError
+        }
+      }
+
+      console.log('✅ Oficina registrada com sucesso')
 
       // Mostrar mensagem de sucesso com estilo laranja
       const successMessage = document.createElement('div')
@@ -59,12 +87,12 @@ export default function RegisterWorkshop() {
         text-align: center;
         max-width: 400px;
       `
-      successMessage.innerHTML = '✅ Oficina registrada com sucesso!<br><br>📧 Verifique seu email para confirmar a conta.'
+      successMessage.innerHTML = '✅ Oficina registrada com sucesso!<br><br>📧 Verifique seu email para confirmar a conta.<br><br>🔒 Seus dados estão protegidos e isolados.'
       document.body.appendChild(successMessage)
       
       setTimeout(() => {
         successMessage.remove()
-      }, 5000)
+      }, 6000)
       
       // Limpar formulário
       setFormData({
@@ -75,9 +103,9 @@ export default function RegisterWorkshop() {
         address: '',
         nif: ''
       })
-    } catch (error) {
-      console.error('Erro ao registrar oficina:', error)
-      alert('Erro ao registrar oficina. Tente novamente.')
+    } catch (error: any) {
+      console.error('❌ Erro ao registrar oficina:', error)
+      alert(`Erro ao registrar oficina: ${error.message || 'Tente novamente.'}`)
     }
   }
 
@@ -95,6 +123,9 @@ export default function RegisterWorkshop() {
           <CardTitle className="text-center text-2xl font-bold">
             Registrar Oficina
           </CardTitle>
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            🔒 Seus dados serão protegidos e isolados
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

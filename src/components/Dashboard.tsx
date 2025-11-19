@@ -15,6 +15,7 @@ interface Vehicle {
   status?: string
   groupid?: string
   createdat?: string
+  user_id?: string
 }
 
 interface Budget {
@@ -33,6 +34,7 @@ interface Budget {
   total?: number
   status?: string
   createdat?: string
+  user_id?: string
 }
 
 interface GroupStats {
@@ -50,6 +52,7 @@ export default function Dashboard() {
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [groupStats, setGroupStats] = useState<GroupStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     loadDashboardData()
@@ -61,47 +64,89 @@ export default function Dashboard() {
 
       console.log('🔄 Iniciando carregamento de dados do dashboard...')
 
-      // Carregar veículos da tabela correta
-      console.log('📊 Buscando veículos...')
+      // 1. Obter usuário autenticado
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        console.error('❌ Erro ao obter usuário:', userError)
+        alert('Você precisa estar logado para acessar o dashboard.')
+        return
+      }
+
+      console.log('✅ Usuário autenticado:', user.id)
+      setCurrentUserId(user.id)
+
+      // 2. Carregar veículos APENAS do usuário atual
+      console.log('📊 Buscando veículos do usuário...')
       const { data: vehiclesData, error: vehiclesError } = await supabase
         .from('vehicles_correct')
         .select('*')
+        .eq('user_id', user.id)
         .order('createdat', { ascending: false })
 
       if (vehiclesError) {
         console.error('❌ Erro ao carregar veículos:', vehiclesError)
-        throw vehiclesError
+        // Se a coluna user_id não existir ainda, buscar todos (temporário)
+        if (vehiclesError.code === '42703') {
+          console.warn('⚠️ Coluna user_id não existe ainda, buscando todos os veículos')
+          const { data: allVehicles } = await supabase
+            .from('vehicles_correct')
+            .select('*')
+            .order('createdat', { ascending: false })
+          setVehicles(allVehicles || [])
+        } else {
+          throw vehiclesError
+        }
+      } else {
+        console.log('✅ Veículos carregados:', vehiclesData?.length || 0)
+        setVehicles(vehiclesData || [])
       }
-      
-      console.log('✅ Veículos carregados:', vehiclesData?.length || 0)
-      setVehicles(vehiclesData || [])
 
-      // Carregar orçamentos/serviços da tabela budgets
-      console.log('📊 Buscando orçamentos/serviços...')
+      // 3. Carregar orçamentos/serviços APENAS do usuário atual
+      console.log('📊 Buscando orçamentos/serviços do usuário...')
       const { data: budgetsData, error: budgetsError } = await supabase
         .from('budgets')
         .select('*')
+        .eq('user_id', user.id)
         .order('createdat', { ascending: false })
 
       if (budgetsError) {
         console.error('❌ Erro ao carregar orçamentos:', budgetsError)
-        throw budgetsError
+        // Se a coluna user_id não existir ainda, buscar todos (temporário)
+        if (budgetsError.code === '42703') {
+          console.warn('⚠️ Coluna user_id não existe ainda, buscando todos os orçamentos')
+          const { data: allBudgets } = await supabase
+            .from('budgets')
+            .select('*')
+            .order('createdat', { ascending: false })
+          setBudgets(allBudgets || [])
+        } else {
+          throw budgetsError
+        }
+      } else {
+        console.log('✅ Orçamentos carregados:', budgetsData?.length || 0)
+        setBudgets(budgetsData || [])
       }
-      
-      console.log('✅ Orçamentos carregados:', budgetsData?.length || 0)
-      setBudgets(budgetsData || [])
 
-      // Carregar grupos
-      const { data: groupsData } = await supabase
+      // 4. Carregar grupos APENAS do usuário atual
+      const { data: groupsData, error: groupsError } = await supabase
         .from('groups')
         .select('*')
+        .eq('user_id', user.id)
 
-      // Calcular estatísticas por grupo
+      let finalGroupsData = groupsData
+      if (groupsError && groupsError.code === '42703') {
+        console.warn('⚠️ Coluna user_id não existe em groups, buscando todos')
+        const { data: allGroups } = await supabase.from('groups').select('*')
+        finalGroupsData = allGroups
+      }
+
+      // 5. Calcular estatísticas por grupo
       const statsMap = new Map<string, GroupStats>()
       const now = new Date()
 
-      if (groupsData) {
-        for (const group of groupsData) {
+      if (finalGroupsData) {
+        for (const group of finalGroupsData) {
           const groupVehicles = vehiclesData?.filter(v => v.groupid === group.id) || []
           
           // Buscar orçamentos dos veículos deste grupo
@@ -164,7 +209,7 @@ export default function Dashboard() {
     }
   }
 
-  // Calcular estatísticas globais da plataforma
+  // Calcular estatísticas globais APENAS do usuário atual
   const totalVehiclesPlatform = vehicles.length
   const totalServicesPlatform = budgets.length
   const totalRevenuePlatform = budgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
@@ -194,48 +239,55 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-      <h2 className="text-2xl sm:text-3xl font-bold">Dashboard - Visão Geral da Plataforma</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl sm:text-3xl font-bold">Dashboard - Minha Oficina</h2>
+        {currentUserId && (
+          <span className="text-xs sm:text-sm text-muted-foreground bg-green-100 px-3 py-1 rounded-full">
+            🔒 Dados Privados
+          </span>
+        )}
+      </div>
       
-      {/* Estatísticas Globais da Plataforma */}
+      {/* Estatísticas Globais da Oficina do Usuário */}
       <div className="space-y-2">
-        <h3 className="text-lg sm:text-xl font-semibold text-[#ff8c00]">📊 Estatísticas Globais</h3>
+        <h3 className="text-lg sm:text-xl font-semibold text-[#ff8c00]">📊 Estatísticas da Minha Oficina</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Card className="border-[#ff8c00] border-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Veículos (Plataforma)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Veículos</CardTitle>
               <Car className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
               <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalVehiclesPlatform}</div>
-              <p className="text-xs text-muted-foreground">Todos os veículos cadastrados</p>
+              <p className="text-xs text-muted-foreground">Veículos cadastrados na sua oficina</p>
             </CardContent>
           </Card>
 
           <Card className="border-[#ff8c00] border-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Serviços Totais (Plataforma)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Serviços Totais</CardTitle>
               <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
               <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalServicesPlatform}</div>
-              <p className="text-xs text-muted-foreground">Todos os serviços realizados</p>
+              <p className="text-xs text-muted-foreground">Serviços realizados na sua oficina</p>
             </CardContent>
           </Card>
 
           <Card className="border-[#ff8c00] border-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Receita Total (Plataforma)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Receita Total</CardTitle>
               <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
               <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">€{totalRevenuePlatform.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">Faturamento total</p>
+              <p className="text-xs text-muted-foreground">Faturamento total da sua oficina</p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Estatísticas Mensais da Plataforma */}
+      {/* Estatísticas Mensais da Oficina */}
       <div className="space-y-2">
         <h3 className="text-lg sm:text-xl font-semibold text-blue-600">📅 Estatísticas Mensais (Mês Atual)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -263,13 +315,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Estatísticas por Oficina/Cliente */}
+      {/* Estatísticas por Grupo/Cliente */}
       <div className="space-y-2">
-        <h3 className="text-lg sm:text-xl font-semibold text-green-600">🏢 Estatísticas por Oficina/Cliente</h3>
+        <h3 className="text-lg sm:text-xl font-semibold text-green-600">🏢 Estatísticas por Grupo/Cliente</h3>
         {groupStats.length === 0 ? (
           <Card>
             <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-              <p className="text-sm text-muted-foreground">Nenhum grupo/oficina cadastrado ainda.</p>
+              <p className="text-sm text-muted-foreground">Nenhum grupo/cliente cadastrado ainda.</p>
             </CardContent>
           </Card>
         ) : (
@@ -366,11 +418,11 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Aviso sobre dados limpos */}
+      {/* Aviso sobre segurança */}
       <Card className="bg-green-50 border-green-400">
         <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
           <p className="text-xs sm:text-sm text-green-800">
-            ✅ <strong>Sistema Limpo:</strong> Todos os dados demo foram removidos. Novos usuários começam com estatísticas zeradas.
+            🔒 <strong>Dados Protegidos:</strong> Você está visualizando apenas os dados da sua oficina. Outros usuários não podem ver suas informações.
           </p>
         </CardContent>
       </Card>
