@@ -76,82 +76,61 @@ export default function Dashboard() {
       console.log('✅ Usuário autenticado:', user.id)
       setCurrentUserId(user.id)
 
-      // 2. Carregar veículos APENAS do usuário atual
-      console.log('📊 Buscando veículos do usuário...')
-      const { data: vehiclesData, error: vehiclesError } = await supabase
+      // 2. Carregar TODOS os veículos (filtrar no cliente)
+      console.log('📊 Buscando veículos...')
+      const { data: allVehiclesData, error: vehiclesError } = await supabase
         .from('vehicles_correct')
         .select('*')
-        .eq('user_id', user.id)
         .order('createdat', { ascending: false })
 
       if (vehiclesError) {
         console.error('❌ Erro ao carregar veículos:', vehiclesError)
-        // Se a coluna user_id não existir ainda, buscar todos (temporário)
-        if (vehiclesError.code === '42703') {
-          console.warn('⚠️ Coluna user_id não existe ainda, buscando todos os veículos')
-          const { data: allVehicles } = await supabase
-            .from('vehicles_correct')
-            .select('*')
-            .order('createdat', { ascending: false })
-          setVehicles(allVehicles || [])
-        } else {
-          throw vehiclesError
-        }
-      } else {
-        console.log('✅ Veículos carregados:', vehiclesData?.length || 0)
-        setVehicles(vehiclesData || [])
+        throw vehiclesError
       }
 
-      // 3. Carregar orçamentos/serviços APENAS do usuário atual
-      console.log('📊 Buscando orçamentos/serviços do usuário...')
-      const { data: budgetsData, error: budgetsError } = await supabase
+      // Filtrar veículos do usuário atual no cliente
+      const userVehicles = allVehiclesData?.filter(v => v.user_id === user.id) || []
+      console.log('✅ Veículos do usuário carregados:', userVehicles.length)
+      setVehicles(userVehicles)
+
+      // 3. Carregar TODOS os orçamentos (filtrar no cliente)
+      console.log('📊 Buscando orçamentos/serviços...')
+      const { data: allBudgetsData, error: budgetsError } = await supabase
         .from('budgets')
         .select('*')
-        .eq('user_id', user.id)
         .order('createdat', { ascending: false })
 
       if (budgetsError) {
         console.error('❌ Erro ao carregar orçamentos:', budgetsError)
-        // Se a coluna user_id não existir ainda, buscar todos (temporário)
-        if (budgetsError.code === '42703') {
-          console.warn('⚠️ Coluna user_id não existe ainda, buscando todos os orçamentos')
-          const { data: allBudgets } = await supabase
-            .from('budgets')
-            .select('*')
-            .order('createdat', { ascending: false })
-          setBudgets(allBudgets || [])
-        } else {
-          throw budgetsError
-        }
-      } else {
-        console.log('✅ Orçamentos carregados:', budgetsData?.length || 0)
-        setBudgets(budgetsData || [])
+        throw budgetsError
       }
 
-      // 4. Carregar grupos APENAS do usuário atual
-      const { data: groupsData, error: groupsError } = await supabase
+      // Filtrar orçamentos do usuário atual no cliente
+      const userBudgets = allBudgetsData?.filter(b => b.user_id === user.id) || []
+      console.log('✅ Orçamentos do usuário carregados:', userBudgets.length)
+      setBudgets(userBudgets)
+
+      // 4. Carregar TODOS os grupos (filtrar no cliente)
+      const { data: allGroupsData, error: groupsError } = await supabase
         .from('groups')
         .select('*')
-        .eq('user_id', user.id)
 
-      let finalGroupsData = groupsData
-      if (groupsError && groupsError.code === '42703') {
-        console.warn('⚠️ Coluna user_id não existe em groups, buscando todos')
-        const { data: allGroups } = await supabase.from('groups').select('*')
-        finalGroupsData = allGroups
+      let userGroups = allGroupsData || []
+      if (!groupsError && allGroupsData) {
+        userGroups = allGroupsData.filter(g => g.user_id === user.id)
       }
 
       // 5. Calcular estatísticas por grupo
       const statsMap = new Map<string, GroupStats>()
       const now = new Date()
 
-      if (finalGroupsData) {
-        for (const group of finalGroupsData) {
-          const groupVehicles = vehiclesData?.filter(v => v.groupid === group.id) || []
+      if (userGroups.length > 0) {
+        for (const group of userGroups) {
+          const groupVehicles = userVehicles.filter(v => v.groupid === group.id)
           
           // Buscar orçamentos dos veículos deste grupo
           const vehicleIds = groupVehicles.map(v => v.id)
-          const groupBudgets = budgetsData?.filter(b => vehicleIds.includes(b.vehicleid)) || []
+          const groupBudgets = userBudgets.filter(b => vehicleIds.includes(b.vehicleid))
           
           // Serviços do mês atual
           const monthlyBudgets = groupBudgets.filter(budget => {

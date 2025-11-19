@@ -20,12 +20,14 @@ interface Vehicle {
   status?: string
   groupid?: string | null
   createdat?: string
+  user_id?: string
 }
 
 interface Group {
   id: string
   name: string
   created_at?: string
+  user_id?: string
 }
 
 interface ServiceHistory {
@@ -70,6 +72,7 @@ export default function ClientManagement() {
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [showBudgetModal, setShowBudgetModal] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const [newVehicle, setNewVehicle] = useState({
     licenseplate: '',
@@ -85,33 +88,68 @@ export default function ClientManagement() {
   })
 
   useEffect(() => {
-    loadVehicles()
-    loadGroups()
+    initializeUser()
   }, [])
 
-  const loadVehicles = async () => {
+  const initializeUser = async () => {
     try {
-      console.log('🔄 Carregando veículos...')
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user) {
+        console.error('❌ Erro ao obter usuário:', error)
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para acessar esta página",
+          variant: "destructive"
+        })
+        return
+      }
+
+      console.log('✅ Usuário autenticado:', user.id)
+      setCurrentUserId(user.id)
+      
+      // Carregar dados APENAS do usuário atual
+      loadVehicles(user.id)
+      loadGroups(user.id)
+    } catch (error) {
+      console.error('❌ Erro ao inicializar usuário:', error)
+    }
+  }
+
+  const loadVehicles = async (userId: string) => {
+    try {
+      console.log('🔄 Carregando veículos do usuário:', userId)
+      
+      // Buscar TODOS os veículos e filtrar no cliente
       const { data, error } = await supabase
         .from('vehicles_correct')
         .select('*')
         .order('createdat', { ascending: false })
 
       if (error) {
-        console.error('❌ Erro do Supabase ao carregar veículos:', error)
+        console.error('❌ Erro ao carregar veículos:', error)
         throw error
       }
 
-      console.log('✅ Veículos carregados:', data?.length || 0)
-      setVehicles(data || [])
+      // Filtrar veículos do usuário atual no cliente
+      const userVehicles = data?.filter(v => v.user_id === userId) || []
+      console.log('✅ Veículos do usuário carregados:', userVehicles.length)
+      setVehicles(userVehicles)
     } catch (error: any) {
       console.error('❌ Erro ao carregar veículos:', error)
+      toast({
+        title: "Erro ao carregar veículos",
+        description: error?.message || 'Erro desconhecido',
+        variant: "destructive"
+      })
     }
   }
 
-  const loadGroups = async () => {
+  const loadGroups = async (userId: string) => {
     try {
-      console.log('🔄 Carregando grupos...')
+      console.log('🔄 Carregando grupos do usuário:', userId)
+      
+      // Buscar TODOS os grupos e filtrar no cliente
       const { data, error } = await supabase
         .from('vehicle_groups')
         .select('*')
@@ -122,8 +160,10 @@ export default function ClientManagement() {
         throw error
       }
 
-      console.log('✅ Grupos carregados:', data?.length || 0)
-      setGroups(data || [])
+      // Filtrar grupos do usuário atual no cliente
+      const userGroups = data?.filter(g => g.user_id === userId) || []
+      console.log('✅ Grupos do usuário carregados:', userGroups.length)
+      setGroups(userGroups)
     } catch (error) {
       console.error('Erro ao carregar grupos:', error)
     }
@@ -133,6 +173,7 @@ export default function ClientManagement() {
     try {
       console.log('📋 Carregando histórico de orçamentos para:', licensePlate)
       
+      // HISTÓRICO DE VEÍCULO É COMPARTILHADO POR MATRÍCULA (conforme solicitado)
       const { data, error } = await supabase
         .from('budgets')
         .select('*')
@@ -158,12 +199,22 @@ export default function ClientManagement() {
   }
 
   const handleAddVehicle = async () => {
+    if (!currentUserId) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para adicionar veículos",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       console.log('🚗 Tentando adicionar veículo:', {
         licenseplate: newVehicle.licenseplate,
         make: newVehicle.make,
         model: newVehicle.model,
-        groupid: newVehicle.groupid
+        groupid: newVehicle.groupid,
+        user_id: currentUserId
       })
 
       // Validação básica
@@ -199,7 +250,8 @@ export default function ClientManagement() {
         year: newVehicle.year,
         mileage: newVehicle.mileage || 0,
         status: 'active',
-        groupid: newVehicle.groupid || null
+        groupid: newVehicle.groupid || null,
+        user_id: currentUserId // 🔒 ASSOCIAR AO USUÁRIO ATUAL
       }
 
       console.log('📤 Enviando dados para Supabase:', vehicleData)
@@ -240,7 +292,7 @@ export default function ClientManagement() {
         groupid: ''
       })
       setShowAddVehicle(false)
-      loadVehicles()
+      loadVehicles(currentUserId)
     } catch (error: any) {
       console.error('❌ ERRO CRÍTICO ao adicionar veículo:', error)
       toast({
@@ -252,6 +304,15 @@ export default function ClientManagement() {
   }
 
   const handleAddGroup = async () => {
+    if (!currentUserId) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para criar grupos",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       console.log('📁 Tentando criar grupo:', newGroup)
 
@@ -266,7 +327,10 @@ export default function ClientManagement() {
 
       const { data, error } = await supabase
         .from('vehicle_groups')
-        .insert([{ name: newGroup.name.trim() }])
+        .insert([{ 
+          name: newGroup.name.trim(),
+          user_id: currentUserId // 🔒 ASSOCIAR AO USUÁRIO ATUAL
+        }])
         .select()
 
       if (error) {
@@ -283,7 +347,7 @@ export default function ClientManagement() {
       
       setNewGroup({ name: '' })
       setShowAddGroup(false)
-      loadGroups()
+      loadGroups(currentUserId)
     } catch (error: any) {
       console.error('❌ Erro ao criar grupo:', error)
       toast({
