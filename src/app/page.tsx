@@ -8,12 +8,12 @@ export default function LandingPage() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-6 flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#ff8c00] rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl">AF</span>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">AutoFix AI</h1>
@@ -22,7 +22,7 @@ export default function LandingPage() {
             <Button variant="outline" onClick={() => router.push('/login')}>
               Entrar
             </Button>
-            <Button onClick={() => router.push('/register-workshop')}>
+            <Button className="bg-[#ff8c00] hover:bg-[#e67e00]" onClick={() => router.push('/register-workshop')}>
               Registrar Oficina
             </Button>
           </div>
@@ -40,10 +40,10 @@ export default function LandingPage() {
           para oficinas modernas.
         </p>
         <div className="flex justify-center space-x-4">
-          <Button size="lg" onClick={() => router.push('/dashboard')}>
+          <Button size="lg" className="bg-[#ff8c00] hover:bg-[#e67e00]" onClick={() => router.push('/login')}>
             Acessar Dashboard
           </Button>
-          <Button size="lg" variant="outline" onClick={() => router.push('/register-workshop')}>
+          <Button size="lg" variant="outline" className="border-[#ff8c00] text-[#ff8c00] hover:bg-[#ff8c00] hover:text-white" onClick={() => router.push('/register-workshop')}>
             Começar Agora
           </Button>
         </div>
@@ -56,9 +56,9 @@ export default function LandingPage() {
             Funcionalidades Avançadas
           </h3>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="text-center">
+            <Card className="text-center border-[#ff8c00] hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle className="text-2xl mb-4">🤖 Diagnóstico IA</CardTitle>
+                <CardTitle className="text-2xl mb-4 text-[#ff8c00]">🤖 Diagnóstico IA</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
@@ -67,9 +67,9 @@ export default function LandingPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="text-center">
+            <Card className="text-center border-[#ff8c00] hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle className="text-2xl mb-4">🚗 Gestão de Veículos</CardTitle>
+                <CardTitle className="text-2xl mb-4 text-[#ff8c00]">🚗 Gestão de Veículos</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
@@ -78,9 +78,9 @@ export default function LandingPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="text-center">
+            <Card className="text-center border-[#ff8c00] hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle className="text-2xl mb-4">💰 Orçamentos Inteligentes</CardTitle>
+                <CardTitle className="text-2xl mb-4 text-[#ff8c00]">💰 Orçamentos Inteligentes</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
@@ -94,7 +94,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-blue-600 text-white py-20">
+      <section className="bg-[#ff8c00] text-white py-20">
         <div className="container mx-auto px-4 text-center">
           <h3 className="text-3xl font-bold mb-6">
             Pronto para transformar sua oficina?
@@ -103,7 +103,7 @@ export default function LandingPage() {
             Junte-se a centenas de oficinas que já estão usando o AutoFix AI
             para otimizar seus processos e aumentar a produtividade.
           </p>
-          <Button size="lg" variant="secondary" onClick={() => router.push('/register-workshop')}>
+          <Button size="lg" variant="secondary" className="bg-white text-[#ff8c00] hover:bg-gray-100" onClick={() => router.push('/register-workshop')}>
             Registrar Minha Oficina
           </Button>
         </div>

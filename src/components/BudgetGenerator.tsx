@@ -91,30 +91,66 @@ export default function BudgetGenerator() {
     try {
       const budget = calculateTotals()
 
-      const { error } = await supabase
+      console.log('💾 Salvando orçamento no Supabase...')
+      console.log('📋 Dados a serem salvos:', {
+        licenseplate: licensePlate.toUpperCase(),
+        clientname: clientName || null,
+        vehicleinfo: vehicleInfo || null,
+        totallabor: budget.totalLabor,
+        totalparts: budget.totalParts,
+        totalhours: budget.totalTime,
+        hourlyrate: hourlyRate,
+        subtotal: budget.subtotal,
+        ivapercentage: budget.ivaPercentage,
+        ivaamount: budget.ivaAmount,
+        totalcost: budget.totalCost,
+        currency: budget.currency,
+        items: budget.items
+      })
+
+      const { data, error } = await supabase
         .from('budgets')
         .insert([{
-          licensePlate: licensePlate.toUpperCase(),
-          clientName: clientName || null,
-          vehicleInfo: vehicleInfo || null,
-          totalLabor: budget.totalLabor,
-          totalParts: budget.totalParts,
-          totalHours: budget.totalTime,
-          hourlyRate: hourlyRate,
+          licenseplate: licensePlate.toUpperCase(),
+          clientname: clientName || null,
+          vehicleinfo: vehicleInfo || null,
+          totallabor: budget.totalLabor,
+          totalparts: budget.totalParts,
+          totalhours: budget.totalTime,
+          hourlyrate: hourlyRate,
           subtotal: budget.subtotal,
-          ivaPercentage: budget.ivaPercentage,
-          ivaAmount: budget.ivaAmount,
-          totalCost: budget.totalCost,
+          ivapercentage: budget.ivaPercentage,
+          ivaamount: budget.ivaAmount,
+          totalcost: budget.totalCost,
           currency: budget.currency,
           items: budget.items
         }])
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erro do Supabase:', error)
+        throw error
+      }
 
+      console.log('✅ Orçamento salvo com sucesso:', data)
       alert('Orçamento salvo com sucesso no histórico do veículo!')
-    } catch (error) {
-      console.error('Erro ao salvar orçamento:', error)
-      alert('Erro ao salvar orçamento. Tente novamente.')
+      
+      // Limpar formulário após salvar
+      setItems([{ description: '', partsCost: 0, notes: '' }])
+      setClientName('')
+      setVehicleInfo('')
+      setLicensePlate('')
+      setTotalHours(0)
+      
+    } catch (error: any) {
+      console.error('❌ ERRO CRÍTICO ao salvar orçamento:', error)
+      console.error('📋 Detalhes do erro:', {
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code
+      })
+      alert(`Erro ao salvar orçamento: ${error?.message || 'Erro desconhecido'}. Verifique o console para mais detalhes.`)
     } finally {
       setSaving(false)
     }

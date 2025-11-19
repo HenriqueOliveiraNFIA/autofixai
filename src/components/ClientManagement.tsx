@@ -6,57 +6,74 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Search, Plus, Car, Users } from 'lucide-react'
+import { Search, Plus, Car, Users, X, FileText } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 interface Vehicle {
-  id: string
-  license_plate: string
-  brand: string
+  id: number
+  licenseplate: string
+  make: string
   model: string
   year: number
-  owner_name: string
-  owner_phone: string
-  group_id?: string
+  mileage?: number
+  lastservice?: string
+  status?: string
+  groupid?: string | null
+  createdat?: string
 }
 
 interface Group {
   id: string
   name: string
-  description?: string
+  created_at?: string
 }
 
 interface ServiceHistory {
-  id: string
-  vehicle_id: string
-  service_date: string
+  id: number
+  vehicleid: number
   description: string
-  total_cost: number
-  workshop_name?: string
+  status?: string
+  cost?: number
+  createdat?: string
+}
+
+interface BudgetItem {
+  description: string
+  partsCost: number
+  notes: string
+}
+
+interface Budget {
+  id: number
+  licenseplate: string
+  items: BudgetItem[]
+  totalparts: number
+  createdat: string
 }
 
 export default function ClientManagement() {
+  const { toast } = useToast()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [serviceHistory, setServiceHistory] = useState<ServiceHistory[]>([])
+  const [budgetHistory, setBudgetHistory] = useState<Budget[]>([])
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [showAddGroup, setShowAddGroup] = useState(false)
+  const [showBudgetModal, setShowBudgetModal] = useState(false)
 
   const [newVehicle, setNewVehicle] = useState({
-    license_plate: '',
-    brand: '',
+    licenseplate: '',
+    make: '',
     model: '',
     year: new Date().getFullYear(),
-    owner_name: '',
-    owner_phone: '',
-    group_id: ''
+    mileage: 0,
+    groupid: ''
   })
 
   const [newGroup, setNewGroup] = useState({
-    name: '',
-    description: ''
+    name: ''
   })
 
   useEffect(() => {
@@ -66,99 +83,216 @@ export default function ClientManagement() {
 
   const loadVehicles = async () => {
     try {
+      console.log('🔄 Carregando veículos...')
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('vehicles_correct')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('createdat', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erro do Supabase ao carregar veículos:', error)
+        throw error
+      }
+
+      console.log('✅ Veículos carregados:', data?.length || 0)
       setVehicles(data || [])
-    } catch (error) {
-      console.error('Erro ao carregar veículos:', error)
+    } catch (error: any) {
+      console.error('❌ Erro ao carregar veículos:', error)
     }
   }
 
   const loadGroups = async () => {
     try {
+      console.log('🔄 Carregando grupos...')
       const { data, error } = await supabase
         .from('vehicle_groups')
         .select('*')
         .order('name')
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erro ao carregar grupos:', error)
+        throw error
+      }
+
+      console.log('✅ Grupos carregados:', data?.length || 0)
       setGroups(data || [])
     } catch (error) {
       console.error('Erro ao carregar grupos:', error)
     }
   }
 
+  const loadBudgetHistory = async (licensePlate: string) => {
+    try {
+      console.log('📋 Carregando histórico de orçamentos para:', licensePlate)
+      
+      const { data, error } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('licenseplate', licensePlate.toUpperCase())
+        .order('createdat', { ascending: false })
+
+      if (error) {
+        console.error('❌ Erro ao carregar orçamentos:', error)
+        throw error
+      }
+
+      console.log('✅ Orçamentos encontrados:', data?.length || 0)
+      setBudgetHistory(data || [])
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar histórico de orçamentos:', error)
+      toast({
+        title: "Erro ao carregar histórico",
+        description: error?.message || 'Erro desconhecido',
+        variant: "destructive"
+      })
+      setBudgetHistory([])
+    }
+  }
+
   const handleAddVehicle = async () => {
     try {
-      const { error } = await supabase
-        .from('vehicles')
-        .insert([{
-          license_plate: newVehicle.license_plate.toUpperCase(),
-          brand: newVehicle.brand,
-          model: newVehicle.model,
-          year: newVehicle.year,
-          owner_name: newVehicle.owner_name,
-          owner_phone: newVehicle.owner_phone,
-          group_id: newVehicle.group_id || null
-        }])
+      console.log('🚗 Tentando adicionar veículo:', {
+        licenseplate: newVehicle.licenseplate,
+        make: newVehicle.make,
+        model: newVehicle.model,
+        groupid: newVehicle.groupid
+      })
 
-      if (error) throw error
+      // Validação básica
+      if (!newVehicle.licenseplate.trim()) {
+        toast({
+          title: "Campo obrigatório",
+          description: "Por favor, preencha a matrícula do veículo",
+          variant: "destructive"
+        })
+        return
+      }
+      if (!newVehicle.make.trim()) {
+        toast({
+          title: "Campo obrigatório",
+          description: "Por favor, preencha a marca do veículo",
+          variant: "destructive"
+        })
+        return
+      }
+      if (!newVehicle.model.trim()) {
+        toast({
+          title: "Campo obrigatório",
+          description: "Por favor, preencha o modelo do veículo",
+          variant: "destructive"
+        })
+        return
+      }
 
-      alert('Veículo adicionado com sucesso!')
+      const vehicleData = {
+        licenseplate: newVehicle.licenseplate.toUpperCase(),
+        make: newVehicle.make,
+        model: newVehicle.model,
+        year: newVehicle.year,
+        mileage: newVehicle.mileage || 0,
+        status: 'active',
+        groupid: newVehicle.groupid || null
+      }
+
+      console.log('📤 Enviando dados para Supabase:', vehicleData)
+
+      const { data, error } = await supabase
+        .from('vehicles_correct')
+        .insert([vehicleData])
+        .select()
+
+      if (error) {
+        console.error('❌ ERRO DETALHADO DO SUPABASE:', error)
+
+        if (error.code === '23505') {
+          toast({
+            title: "Matrícula duplicada",
+            description: "Esta matrícula já está cadastrada no sistema!",
+            variant: "destructive"
+          })
+          return
+        }
+
+        throw error
+      }
+
+      console.log('✅ Veículo adicionado com sucesso:', data)
+      toast({
+        title: "Sucesso!",
+        description: "Veículo adicionado com sucesso",
+        className: "bg-[#ff8c00] text-white"
+      })
+      
       setNewVehicle({
-        license_plate: '',
-        brand: '',
+        licenseplate: '',
+        make: '',
         model: '',
         year: new Date().getFullYear(),
-        owner_name: '',
-        owner_phone: '',
-        group_id: ''
+        mileage: 0,
+        groupid: ''
       })
       setShowAddVehicle(false)
       loadVehicles()
-    } catch (error) {
-      console.error('Erro ao adicionar veículo:', error)
-      alert('Erro ao adicionar veículo. Verifique se a matrícula já existe.')
+    } catch (error: any) {
+      console.error('❌ ERRO CRÍTICO ao adicionar veículo:', error)
+      toast({
+        title: "Erro ao adicionar veículo",
+        description: error?.message || 'Erro desconhecido',
+        variant: "destructive"
+      })
     }
   }
 
   const handleAddGroup = async () => {
     try {
-      const { error } = await supabase
+      console.log('📁 Tentando criar grupo:', newGroup)
+
+      if (!newGroup.name.trim()) {
+        toast({
+          title: "Campo obrigatório",
+          description: "Por favor, preencha o nome do grupo",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const { data, error } = await supabase
         .from('vehicle_groups')
-        .insert([newGroup])
+        .insert([{ name: newGroup.name.trim() }])
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erro ao criar grupo:', error)
+        throw error
+      }
 
-      alert('Grupo criado com sucesso!')
-      setNewGroup({ name: '', description: '' })
+      console.log('✅ Grupo criado com sucesso:', data)
+      toast({
+        title: "Sucesso!",
+        description: "Grupo criado com sucesso",
+        className: "bg-[#ff8c00] text-white"
+      })
+      
+      setNewGroup({ name: '' })
       setShowAddGroup(false)
       loadGroups()
-    } catch (error) {
-      console.error('Erro ao criar grupo:', error)
-      alert('Erro ao criar grupo.')
+    } catch (error: any) {
+      console.error('❌ Erro ao criar grupo:', error)
+      toast({
+        title: "Erro ao criar grupo",
+        description: error?.message || 'Erro desconhecido',
+        variant: "destructive"
+      })
     }
   }
 
-  const searchVehicleHistory = async (licensePlate: string) => {
+  const searchVehicleHistory = async (vehicleId: number) => {
     try {
-      const { data: vehicleData, error: vehicleError } = await supabase
-        .from('vehicles')
-        .select('id')
-        .eq('license_plate', licensePlate.toUpperCase())
-        .single()
-
-      if (vehicleError) throw vehicleError
-
       const { data: historyData, error: historyError } = await supabase
-        .from('service_history')
+        .from('services')
         .select('*')
-        .eq('vehicle_id', vehicleData.id)
-        .order('service_date', { ascending: false })
+        .eq('vehicleid', vehicleId)
+        .order('createdat', { ascending: false })
 
       if (historyError) throw historyError
 
@@ -173,25 +307,52 @@ export default function ClientManagement() {
     if (!searchQuery.trim()) return
 
     const vehicle = vehicles.find(v => 
-      v.license_plate.toUpperCase() === searchQuery.toUpperCase()
+      v.licenseplate.toUpperCase() === searchQuery.toUpperCase()
     )
 
     if (vehicle) {
       setSelectedVehicle(vehicle)
-      await searchVehicleHistory(vehicle.license_plate)
+      await searchVehicleHistory(vehicle.id)
+      await loadBudgetHistory(vehicle.licenseplate)
     } else {
-      alert('Veículo não encontrado')
+      toast({
+        title: "Veículo não encontrado",
+        description: "Nenhum veículo com esta matrícula foi encontrado",
+        variant: "destructive"
+      })
       setSelectedVehicle(null)
       setServiceHistory([])
+      setBudgetHistory([])
     }
   }
 
+  const handleVehicleClick = async (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle)
+    await searchVehicleHistory(vehicle.id)
+    await loadBudgetHistory(vehicle.licenseplate)
+  }
+
   const filteredVehicles = vehicles.filter(v =>
-    v.license_plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.owner_name.toLowerCase().includes(searchQuery.toLowerCase())
+    v.licenseplate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.model.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  // Agrupar veículos por grupo
+  const vehiclesByGroup = filteredVehicles.reduce((acc, vehicle) => {
+    const groupId = vehicle.groupid || 'sem-grupo'
+    if (!acc[groupId]) {
+      acc[groupId] = []
+    }
+    acc[groupId].push(vehicle)
+    return acc
+  }, {} as Record<string, Vehicle[]>)
+
+  const getGroupName = (groupId: string) => {
+    if (groupId === 'sem-grupo') return 'Sem Grupo'
+    const group = groups.find(g => g.id === groupId)
+    return group?.name || 'Grupo Desconhecido'
+  }
 
   return (
     <div className="space-y-6">
@@ -202,7 +363,7 @@ export default function ClientManagement() {
             <Users className="w-4 h-4 mr-2" />
             Novo Grupo
           </Button>
-          <Button onClick={() => setShowAddVehicle(!showAddVehicle)}>
+          <Button onClick={() => setShowAddVehicle(!showAddVehicle)} className="bg-[#ff8c00] hover:bg-[#e67e00]">
             <Plus className="w-4 h-4 mr-2" />
             Novo Veículo
           </Button>
@@ -220,19 +381,16 @@ export default function ClientManagement() {
               <Input
                 value={newGroup.name}
                 onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
-                placeholder="Ex: Stand AutoCarros"
+                placeholder="Ex: Stand AutoCarros, Cliente Empresa XYZ"
               />
-            </div>
-            <div>
-              <Label>Descrição</Label>
-              <Input
-                value={newGroup.description}
-                onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
-                placeholder="Descrição opcional"
-              />
+              <p className="text-sm text-gray-500 mt-1">
+                Crie grupos para organizar veículos por stand, cliente ou empresa
+              </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleAddGroup}>Criar Grupo</Button>
+              <Button onClick={handleAddGroup} className="bg-[#ff8c00] hover:bg-[#e67e00]">
+                Criar Grupo
+              </Button>
               <Button variant="outline" onClick={() => setShowAddGroup(false)}>Cancelar</Button>
             </div>
           </CardContent>
@@ -247,23 +405,23 @@ export default function ClientManagement() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Matrícula</Label>
+                <Label>Matrícula *</Label>
                 <Input
-                  value={newVehicle.license_plate}
-                  onChange={(e) => setNewVehicle({ ...newVehicle, license_plate: e.target.value })}
+                  value={newVehicle.licenseplate}
+                  onChange={(e) => setNewVehicle({ ...newVehicle, licenseplate: e.target.value })}
                   placeholder="AA-00-BB"
                 />
               </div>
               <div>
-                <Label>Marca</Label>
+                <Label>Marca *</Label>
                 <Input
-                  value={newVehicle.brand}
-                  onChange={(e) => setNewVehicle({ ...newVehicle, brand: e.target.value })}
+                  value={newVehicle.make}
+                  onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
                   placeholder="Ex: Toyota"
                 />
               </div>
               <div>
-                <Label>Modelo</Label>
+                <Label>Modelo *</Label>
                 <Input
                   value={newVehicle.model}
                   onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
@@ -279,27 +437,20 @@ export default function ClientManagement() {
                 />
               </div>
               <div>
-                <Label>Nome do Proprietário</Label>
+                <Label>Quilometragem</Label>
                 <Input
-                  value={newVehicle.owner_name}
-                  onChange={(e) => setNewVehicle({ ...newVehicle, owner_name: e.target.value })}
-                  placeholder="Nome completo"
+                  type="number"
+                  value={newVehicle.mileage}
+                  onChange={(e) => setNewVehicle({ ...newVehicle, mileage: parseInt(e.target.value) })}
+                  placeholder="0"
                 />
               </div>
               <div>
-                <Label>Telefone</Label>
-                <Input
-                  value={newVehicle.owner_phone}
-                  onChange={(e) => setNewVehicle({ ...newVehicle, owner_phone: e.target.value })}
-                  placeholder="+351 900 000 000"
-                />
-              </div>
-              <div className="col-span-2">
                 <Label>Grupo (Opcional)</Label>
                 <select
                   className="w-full p-2 border rounded"
-                  value={newVehicle.group_id}
-                  onChange={(e) => setNewVehicle({ ...newVehicle, group_id: e.target.value })}
+                  value={newVehicle.groupid}
+                  onChange={(e) => setNewVehicle({ ...newVehicle, groupid: e.target.value })}
                 >
                   <option value="">Sem grupo</option>
                   {groups.map(group => (
@@ -309,7 +460,9 @@ export default function ClientManagement() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleAddVehicle}>Adicionar Veículo</Button>
+              <Button onClick={handleAddVehicle} className="bg-[#ff8c00] hover:bg-[#e67e00]">
+                Adicionar Veículo
+              </Button>
               <Button variant="outline" onClick={() => setShowAddVehicle(false)}>Cancelar</Button>
             </div>
           </CardContent>
@@ -328,7 +481,7 @@ export default function ClientManagement() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
-            <Button onClick={handleSearch}>
+            <Button onClick={handleSearch} className="bg-[#ff8c00] hover:bg-[#e67e00]">
               <Search className="w-4 h-4 mr-2" />
               Buscar
             </Button>
@@ -339,16 +492,32 @@ export default function ClientManagement() {
       {selectedVehicle && (
         <Card>
           <CardHeader>
-            <CardTitle>Histórico do Veículo</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              Histórico do Veículo
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowBudgetModal(true)}
+                className="bg-[#ff8c00] hover:bg-[#e67e00] text-white"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Ver Orçamentos ({budgetHistory.length})
+              </Button>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-bold text-lg mb-2">
-                {selectedVehicle.brand} {selectedVehicle.model} ({selectedVehicle.year})
+                {selectedVehicle.make} {selectedVehicle.model} ({selectedVehicle.year})
               </h3>
-              <p className="text-sm text-gray-600">Matrícula: {selectedVehicle.license_plate}</p>
-              <p className="text-sm text-gray-600">Proprietário: {selectedVehicle.owner_name}</p>
-              <p className="text-sm text-gray-600">Telefone: {selectedVehicle.owner_phone}</p>
+              <p className="text-sm text-gray-600">Matrícula: {selectedVehicle.licenseplate}</p>
+              <p className="text-sm text-gray-600">Quilometragem: {selectedVehicle.mileage || 0} km</p>
+              <p className="text-sm text-gray-600">Status: {selectedVehicle.status || 'active'}</p>
+              {selectedVehicle.groupid && (
+                <p className="text-sm text-gray-600">
+                  Grupo: {getGroupName(selectedVehicle.groupid)}
+                </p>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -360,12 +529,12 @@ export default function ClientManagement() {
                   <div key={service.id} className="border p-4 rounded-lg">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-semibold">{new Date(service.service_date).toLocaleDateString('pt-PT')}</p>
-                        {service.workshop_name && (
-                          <p className="text-sm text-gray-600">Oficina: {service.workshop_name}</p>
-                        )}
+                        <p className="font-semibold">
+                          {service.createdat ? new Date(service.createdat).toLocaleDateString('pt-PT') : 'Data não disponível'}
+                        </p>
+                        <p className="text-sm text-gray-600">Status: {service.status || 'pending'}</p>
                       </div>
-                      <p className="font-bold text-lg">€{service.total_cost.toFixed(2)}</p>
+                      <p className="font-bold text-lg">€{(service.cost || 0).toFixed(2)}</p>
                     </div>
                     <p className="text-gray-700">{service.description}</p>
                   </div>
@@ -376,34 +545,127 @@ export default function ClientManagement() {
         </Card>
       )}
 
+      {/* Modal Flutuante de Orçamentos */}
+      {showBudgetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-2xl font-bold">
+                Histórico de Orçamentos - {selectedVehicle?.licenseplate}
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowBudgetModal(false)}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+              {budgetHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 text-lg">Nenhum orçamento encontrado para esta matrícula.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {budgetHistory.map((budget, index) => (
+                    <div key={budget.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="font-bold text-lg">Orçamento #{budgetHistory.length - index}</p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(budget.createdat).toLocaleDateString('pt-PT', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">Oficina: Anónimo</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">Total em Peças</p>
+                          <p className="font-bold text-xl text-[#ff8c00]">€{budget.totalparts.toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mt-4">
+                        <h4 className="font-semibold text-sm text-gray-700 mb-2">Materiais/Peças:</h4>
+                        {budget.items && budget.items.length > 0 ? (
+                          budget.items.map((item, itemIndex) => (
+                            <div key={itemIndex} className="bg-white p-3 rounded border-l-4 border-[#ff8c00]">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">{item.description || 'Sem descrição'}</p>
+                                  {item.notes && (
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      <span className="font-medium">Observações:</span> {item.notes}
+                                    </p>
+                                  )}
+                                </div>
+                                <p className="font-semibold text-[#ff8c00] ml-4">€{item.partsCost.toFixed(2)}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">Nenhum item registrado</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Todos os Veículos ({filteredVehicles.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {filteredVehicles.map(vehicle => (
-              <div
-                key={vehicle.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                onClick={() => {
-                  setSelectedVehicle(vehicle)
-                  searchVehicleHistory(vehicle.license_plate)
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <Car className="w-8 h-8 text-gray-400" />
-                  <div>
-                    <p className="font-semibold">{vehicle.license_plate}</p>
-                    <p className="text-sm text-gray-600">
-                      {vehicle.brand} {vehicle.model} ({vehicle.year})
-                    </p>
-                    <p className="text-sm text-gray-500">{vehicle.owner_name}</p>
+          <div className="space-y-6">
+            {filteredVehicles.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">Nenhum veículo cadastrado ainda.</p>
+            ) : (
+              Object.entries(vehiclesByGroup).map(([groupId, groupVehicles]) => (
+                <div key={groupId} className="space-y-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-5 h-5 text-[#ff8c00]" />
+                    <h3 className="font-bold text-lg text-[#ff8c00]">
+                      {getGroupName(groupId)} ({groupVehicles.length})
+                    </h3>
+                  </div>
+                  <div className="space-y-2 pl-4 border-l-2 border-[#ff8c00]">
+                    {groupVehicles.map(vehicle => (
+                      <div
+                        key={vehicle.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => handleVehicleClick(vehicle)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <Car className="w-8 h-8 text-gray-400" />
+                          <div>
+                            <p className="font-semibold">{vehicle.licenseplate}</p>
+                            <p className="text-sm text-gray-600">
+                              {vehicle.make} {vehicle.model} ({vehicle.year})
+                            </p>
+                            <p className="text-sm text-gray-500">{vehicle.mileage || 0} km</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="hover:bg-[#ff8c00] hover:text-white">
+                          Ver Histórico
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <Button variant="outline" size="sm">Ver Histórico</Button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

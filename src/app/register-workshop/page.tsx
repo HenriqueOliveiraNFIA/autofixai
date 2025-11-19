@@ -27,7 +27,7 @@ export default function RegisterWorkshop() {
 
       if (authError) throw authError
 
-      // Inserir dados da oficina na tabela workshops
+      // Inserir dados da oficina na tabela workshops (apenas colunas existentes)
       const { error: insertError } = await supabase
         .from('workshops')
         .insert([
@@ -35,15 +35,36 @@ export default function RegisterWorkshop() {
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
-            address: formData.address,
-            nif: formData.nif,
-            user_id: authData.user?.id
+            address: formData.address
           }
         ])
 
       if (insertError) throw insertError
 
-      alert('Oficina registrada com sucesso! Verifique seu email para confirmar a conta.')
+      // Mostrar mensagem de sucesso com estilo laranja
+      const successMessage = document.createElement('div')
+      successMessage.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #ff8c00;
+        color: white;
+        padding: 24px 32px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(255, 140, 0, 0.3);
+        z-index: 9999;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+        max-width: 400px;
+      `
+      successMessage.innerHTML = '✅ Oficina registrada com sucesso!<br><br>📧 Verifique seu email para confirmar a conta.'
+      document.body.appendChild(successMessage)
+      
+      setTimeout(() => {
+        successMessage.remove()
+      }, 5000)
       
       // Limpar formulário
       setFormData({
@@ -149,7 +170,7 @@ export default function RegisterWorkshop() {
                 placeholder="123456789"
               />
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full bg-[#ff8c00] hover:bg-[#e67e00]">
               Registrar Oficina
             </Button>
           </form>
