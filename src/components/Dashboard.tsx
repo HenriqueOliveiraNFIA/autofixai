@@ -17,11 +17,20 @@ interface Vehicle {
   createdat?: string
 }
 
-interface Service {
+interface Budget {
   id: number
   vehicleid: number
-  description: string
-  cost?: number
+  clientname?: string
+  servicetype?: string
+  servicecategory?: string
+  description?: string
+  laborhours?: number
+  laborrate?: number
+  parts?: any[]
+  subtotal?: number
+  tax?: number
+  discount?: number
+  total?: number
   status?: string
   createdat?: string
 }
@@ -38,7 +47,7 @@ interface GroupStats {
 
 export default function Dashboard() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [services, setServices] = useState<Service[]>([])
+  const [budgets, setBudgets] = useState<Budget[]>([])
   const [groupStats, setGroupStats] = useState<GroupStats[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -67,20 +76,20 @@ export default function Dashboard() {
       console.log('✅ Veículos carregados:', vehiclesData?.length || 0)
       setVehicles(vehiclesData || [])
 
-      // Carregar serviços
-      console.log('📊 Buscando histórico de serviços...')
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('services')
+      // Carregar orçamentos/serviços da tabela budgets
+      console.log('📊 Buscando orçamentos/serviços...')
+      const { data: budgetsData, error: budgetsError } = await supabase
+        .from('budgets')
         .select('*')
         .order('createdat', { ascending: false })
 
-      if (servicesError) {
-        console.error('❌ Erro ao carregar serviços:', servicesError)
-        throw servicesError
+      if (budgetsError) {
+        console.error('❌ Erro ao carregar orçamentos:', budgetsError)
+        throw budgetsError
       }
       
-      console.log('✅ Serviços carregados:', servicesData?.length || 0)
-      setServices(servicesData || [])
+      console.log('✅ Orçamentos carregados:', budgetsData?.length || 0)
+      setBudgets(budgetsData || [])
 
       // Carregar grupos
       const { data: groupsData } = await supabase
@@ -95,27 +104,27 @@ export default function Dashboard() {
         for (const group of groupsData) {
           const groupVehicles = vehiclesData?.filter(v => v.groupid === group.id) || []
           
-          // Buscar serviços dos veículos deste grupo
+          // Buscar orçamentos dos veículos deste grupo
           const vehicleIds = groupVehicles.map(v => v.id)
-          const groupServices = servicesData?.filter(s => vehicleIds.includes(s.vehicleid)) || []
+          const groupBudgets = budgetsData?.filter(b => vehicleIds.includes(b.vehicleid)) || []
           
           // Serviços do mês atual
-          const monthlyServices = groupServices.filter(service => {
-            if (!service.createdat) return false
-            const serviceDate = new Date(service.createdat)
-            return serviceDate.getMonth() === now.getMonth() && serviceDate.getFullYear() === now.getFullYear()
+          const monthlyBudgets = groupBudgets.filter(budget => {
+            if (!budget.createdat) return false
+            const budgetDate = new Date(budget.createdat)
+            return budgetDate.getMonth() === now.getMonth() && budgetDate.getFullYear() === now.getFullYear()
           })
 
           // Receitas
-          const totalRevenue = groupServices.reduce((sum, service) => sum + (service.cost || 0), 0)
-          const monthlyRevenue = monthlyServices.reduce((sum, service) => sum + (service.cost || 0), 0)
+          const totalRevenue = groupBudgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
+          const monthlyRevenue = monthlyBudgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
 
           statsMap.set(group.id, {
             groupid: group.id,
             groupname: group.name,
             totalVehicles: groupVehicles.length,
-            totalServices: groupServices.length,
-            monthlyServices: monthlyServices.length,
+            totalServices: groupBudgets.length,
+            monthlyServices: monthlyBudgets.length,
             totalRevenue: totalRevenue,
             monthlyRevenue: monthlyRevenue
           })
@@ -136,7 +145,7 @@ export default function Dashboard() {
       })
       
       setVehicles([])
-      setServices([])
+      setBudgets([])
       setGroupStats([])
       
       let errorMessage = 'Erro ao carregar dados do dashboard.'
@@ -157,23 +166,23 @@ export default function Dashboard() {
 
   // Calcular estatísticas globais da plataforma
   const totalVehiclesPlatform = vehicles.length
-  const totalServicesPlatform = services.length
-  const totalRevenuePlatform = services.reduce((sum, service) => sum + (service.cost || 0), 0)
+  const totalServicesPlatform = budgets.length
+  const totalRevenuePlatform = budgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
   
   const now = new Date()
-  const servicesThisMonth = services.filter(service => {
-    if (!service.createdat) return false
-    const serviceDate = new Date(service.createdat)
-    return serviceDate.getMonth() === now.getMonth() && serviceDate.getFullYear() === now.getFullYear()
+  const servicesThisMonth = budgets.filter(budget => {
+    if (!budget.createdat) return false
+    const budgetDate = new Date(budget.createdat)
+    return budgetDate.getMonth() === now.getMonth() && budgetDate.getFullYear() === now.getFullYear()
   }).length
 
-  const revenueThisMonth = services
-    .filter(service => {
-      if (!service.createdat) return false
-      const serviceDate = new Date(service.createdat)
-      return serviceDate.getMonth() === now.getMonth() && serviceDate.getFullYear() === now.getFullYear()
+  const revenueThisMonth = budgets
+    .filter(budget => {
+      if (!budget.createdat) return false
+      const budgetDate = new Date(budget.createdat)
+      return budgetDate.getMonth() === now.getMonth() && budgetDate.getFullYear() === now.getFullYear()
     })
-    .reduce((sum, service) => sum + (service.cost || 0), 0)
+    .reduce((sum, budget) => sum + (budget.total || 0), 0)
 
   if (loading) {
     return (
@@ -334,19 +343,21 @@ export default function Dashboard() {
             <CardTitle className="text-base sm:text-lg">Últimos Serviços</CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0">
-            {services.length === 0 ? (
+            {budgets.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum serviço registrado ainda.</p>
             ) : (
               <div className="space-y-2">
-                {services.slice(0, 5).map((service) => (
-                  <div key={service.id} className="flex items-center justify-between border-b pb-2 last:border-b-0 gap-2">
+                {budgets.slice(0, 5).map((budget) => (
+                  <div key={budget.id} className="flex items-center justify-between border-b pb-2 last:border-b-0 gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm sm:text-base truncate">{service.description}</p>
+                      <p className="font-medium text-sm sm:text-base truncate">
+                        {budget.servicetype || 'Serviço'} - {budget.clientname || 'Cliente'}
+                      </p>
                       <p className="text-xs sm:text-sm text-muted-foreground">
-                        {service.createdat ? new Date(service.createdat).toLocaleDateString('pt-PT') : 'Data não disponível'}
+                        {budget.createdat ? new Date(budget.createdat).toLocaleDateString('pt-PT') : 'Data não disponível'}
                       </p>
                     </div>
-                    <p className="font-bold text-sm sm:text-base whitespace-nowrap">€{(service.cost || 0).toFixed(2)}</p>
+                    <p className="font-bold text-sm sm:text-base whitespace-nowrap">€{(budget.total || 0).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
