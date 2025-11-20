@@ -43,7 +43,6 @@ export default function BudgetGenerator() {
   const [hourlyRate, setHourlyRate] = useState(45)
   const [saving, setSaving] = useState(false)
   const [prefillNotice, setPrefillNotice] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   // Campos de histórico de serviço
   const [serviceType, setServiceType] = useState('avaria')
@@ -52,27 +51,6 @@ export default function BudgetGenerator() {
   const [warranty, setWarranty] = useState(false)
 
   useEffect(() => {
-    initializeUser()
-    loadPrefillData()
-  }, [])
-
-  const initializeUser = async () => {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error || !user) {
-        console.error('❌ Erro ao obter usuário:', error)
-        return
-      }
-
-      console.log('✅ Usuário autenticado:', user.id)
-      setCurrentUserId(user.id)
-    } catch (error) {
-      console.error('❌ Erro ao inicializar usuário:', error)
-    }
-  }
-
-  const loadPrefillData = () => {
     // Verificar se há dados pré-preenchidos da Agenda
     const prefillData = localStorage.getItem('budgetPrefillData')
     if (prefillData) {
@@ -120,7 +98,7 @@ export default function BudgetGenerator() {
         console.error('Erro ao carregar dados pré-preenchidos:', error)
       }
     }
-  }
+  }, [])
 
   const addItem = () => {
     setItems([...items, {
@@ -164,11 +142,6 @@ export default function BudgetGenerator() {
   }
 
   const saveBudget = async () => {
-    if (!currentUserId) {
-      alert('Você precisa estar logado para salvar orçamentos')
-      return
-    }
-
     if (!licensePlate.trim()) {
       alert('Por favor, insira a matrícula do veículo')
       return
@@ -204,8 +177,7 @@ export default function BudgetGenerator() {
           ivaamount: budget.ivaAmount,
           totalcost: budget.totalCost,
           currency: budget.currency,
-          items: itemsWithServiceInfo,
-          user_id: currentUserId // 🔒 ASSOCIAR AO USUÁRIO ATUAL
+          items: itemsWithServiceInfo
         }])
         .select()
 
