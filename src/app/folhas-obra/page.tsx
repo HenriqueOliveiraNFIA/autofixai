@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, FileText, Download, Eye, CheckCircle, Clock } from 'lucide-react'
+import { ArrowLeft, FileText, Download, Eye, CheckCircle, Clock, Save } from 'lucide-react'
 
 interface FolhaObra {
   id: string
@@ -29,6 +29,7 @@ interface FolhaObra {
   total_final?: number
   status_pagamento: string
   status_entrega: string
+  owner_id?: string
 }
 
 export default function FolhasObraPage() {
@@ -36,6 +37,7 @@ export default function FolhasObraPage() {
   const [folhas, setFolhas] = useState<FolhaObra[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFolha, setSelectedFolha] = useState<FolhaObra | null>(null)
+  const [savingToHistory, setSavingToHistory] = useState<string | null>(null)
 
   useEffect(() => {
     loadFolhas()
@@ -73,6 +75,71 @@ export default function FolhasObraPage() {
       loadFolhas()
     } catch (error) {
       console.error('Erro ao atualizar status:', error)
+    }
+  }
+
+  const handleSaveToHistory = async (folha: FolhaObra) => {
+    if (!folha.veiculo_matricula) {
+      alert('Esta folha de obra não possui matrícula do veículo')
+      return
+    }
+
+    setSavingToHistory(folha.id)
+
+    try {
+      // Buscar informações da oficina
+      const userId = localStorage.getItem('userId')
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('nome_oficina, nome')
+        .eq('auth_id', userId)
+        .single()
+
+      // Buscar peças do trabalho relacionado
+      const { data: trabalho } = await supabase
+        .from('trabalhos')
+        .select('id')
+        .eq('veiculo_matricula', folha.veiculo_matricula)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      let pecas = []
+      if (trabalho) {
+        const { data: pecasData } = await supabase
+          .from('pecas_trabalho')
+          .select('*')
+          .eq('trabalho_id', trabalho.id)
+        
+        pecas = pecasData || []
+      }
+
+      // Salvar no histórico global
+      const { error } = await supabase
+        .from('vehicle_history')
+        .insert({
+          matricula: folha.veiculo_matricula,
+          oficina_id: userId,
+          oficina_nome: profile?.nome_oficina || profile?.nome || 'Oficina',
+          tipo_trabalho: folha.tipo_servico || 'Não especificado',
+          data_servico: folha.data_emissao,
+          descricao: folha.descricao_servico || '',
+          pecas: pecas,
+          horas_trabalhadas: folha.horas_trabalhadas || 0,
+          total_mao_obra: folha.total_mao_obra || 0,
+          total_pecas: folha.total_pecas || 0,
+          total_final: folha.total_final || 0,
+          folha_obra_id: folha.id
+        })
+
+      if (error) throw error
+
+      alert('✅ Folha de obra salva no histórico global do veículo!')
+    } catch (error) {
+      console.error('Erro ao salvar no histórico:', error)
+      alert('Erro ao salvar no histórico. Tente novamente.')
+    } finally {
+      setSavingToHistory(null)
     }
   }
 
@@ -146,6 +213,16 @@ export default function FolhasObraPage() {
                       </p>
                     </div>
                     <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSaveToHistory(folha)}
+                        disabled={savingToHistory === folha.id}
+                        className="border-green-500 text-green-600 hover:bg-green-50"
+                      >
+                        <Save className="w-4 h-4 mr-1" />
+                        {savingToHistory === folha.id ? 'Salvando...' : 'Salvar no Histórico'}
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"

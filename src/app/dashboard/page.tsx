@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
-import { Car, Calendar, User, LogOut, Wrench, FileText } from 'lucide-react'
+import { Car, Calendar, User, LogOut, Wrench, FileText, History } from 'lucide-react'
 
 interface Profile {
   nome_oficina?: string
@@ -188,7 +188,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Ações Rápidas</CardTitle>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <CardContent className="grid md:grid-cols-2 lg:grid-cols-6 gap-4">
             <Button className="bg-[#ff8c00] hover:bg-[#e67e00]" onClick={() => router.push('/carros')}>
               <Car className="w-4 h-4 mr-2" />
               Adicionar Carro
@@ -200,6 +200,10 @@ export default function DashboardPage() {
             <Button className="bg-[#ff8c00] hover:bg-[#e67e00]" onClick={() => router.push('/folhas-obra')}>
               <FileText className="w-4 h-4 mr-2" />
               Ver Folhas de Obra
+            </Button>
+            <Button className="bg-[#ff8c00] hover:bg-[#e67e00]" onClick={() => router.push('/historico-veiculos')}>
+              <History className="w-4 h-4 mr-2" />
+              Histórico de Veículos
             </Button>
             <Button className="bg-[#ff8c00] hover:bg-[#e67e00]" onClick={() => router.push('/agenda')}>
               <Calendar className="w-4 h-4 mr-2" />
