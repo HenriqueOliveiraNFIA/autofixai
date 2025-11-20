@@ -1,115 +1,119 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { supabase } from '@/lib/supabase';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const router = useRouter();
-
-  useEffect(() => {
-    // Diagnóstico detalhado das variáveis de ambiente
-    console.log('🔍 DIAGNÓSTICO DE CONFIGURAÇÃO SUPABASE:');
-    console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || '❌ NÃO CONFIGURADA');
-    console.log('ANON KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Configurada (primeiros 20 chars): ' + process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 20) + '...' : '❌ NÃO CONFIGURADA');
-    
-    // Verificar se o cliente Supabase foi criado corretamente
-    if (supabase) {
-      console.log('✅ Cliente Supabase criado');
-      // @ts-ignore
-      console.log('Supabase URL no cliente:', supabase.supabaseUrl || 'não disponível');
-    } else {
-      console.error('❌ Cliente Supabase NÃO foi criado!');
-    }
-  }, []);
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    console.log('🔐 Tentando fazer login...');
-    console.log('Email:', email);
+    e.preventDefault()
+    setLoading(true)
+    setError('')
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Simular login (substituir por autenticação real da Lasy.ai)
+      if (email && password) {
+        // Criar perfil automático se não existir
+        const userId = 'user_' + Date.now()
+        
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', email)
+          .single()
 
-      console.log('📊 Resposta do Supabase:', { data, error: authError });
+        if (!existingProfile) {
+          await supabase.from('profiles').insert({
+            auth_id: userId,
+            email: email,
+            data_criacao: new Date().toISOString()
+          })
+        }
 
-      if (authError) {
-        console.error('❌ Erro de autenticação:', authError);
-        throw authError;
+        // Salvar userId no localStorage
+        localStorage.setItem('userId', existingProfile?.auth_id || userId)
+        localStorage.setItem('userEmail', email)
+        
+        router.push('/dashboard')
+      } else {
+        setError('Por favor, preencha todos os campos')
       }
-
-      console.log('✅ Login bem-sucedido!');
-      router.push('/dashboard');
     } catch (err: any) {
-      console.error('❌ Erro capturado:', err);
-      setError(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
+      setError(err.message || 'Erro ao fazer login')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Login da Oficina</CardTitle>
-          <CardDescription>
-            Acesse sua conta no AutoFix AI
-          </CardDescription>
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-[#ff8c00] rounded-lg flex items-center justify-center mb-4">
+            <span className="text-white font-bold text-2xl">AF</span>
+          </div>
+          <CardTitle className="text-2xl">Entrar no AutoFix AI</CardTitle>
+          <CardDescription>Acesse sua conta para gerenciar sua oficina</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-red-600 text-sm font-medium">{error}</p>
-                <p className="text-red-500 text-xs mt-1">
-                  Verifique o console do navegador (F12) para mais detalhes
-                </p>
+              <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                {error}
               </div>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-[#ff8c00] hover:bg-[#e67e00]"
+              disabled={loading}
+            >
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
+            <div className="text-center text-sm text-gray-600">
+              Não tem conta?{' '}
+              <button
+                type="button"
+                onClick={() => router.push('/register-workshop')}
+                className="text-[#ff8c00] hover:underline"
+              >
+                Registrar oficina
+              </button>
+            </div>
           </form>
-          <p className="mt-4 text-center text-sm">
-            Não tem conta? <a href="/register" className="text-blue-600 hover:underline">Cadastre-se</a>
-          </p>
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

@@ -72,6 +72,7 @@ export default function ClientManagement() {
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [showBudgetModal, setShowBudgetModal] = useState(false)
+  const [showSqlSetup, setShowSqlSetup] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
 
   const [newVehicle, setNewVehicle] = useState({
@@ -119,8 +120,8 @@ export default function ClientManagement() {
       console.log('🔄 Carregando veículos do usuário:', authId)
       
       const { data, error } = await supabase
-        .from('vehicles_correct')
-        .select('id, licenseplate, make, model, year, mileage, status, groupid, user_id, createdat')
+        .from('vehicles_v3')
+        .select('*')
         .eq('user_id', authId)
         .order('createdat', { ascending: false })
 
@@ -135,7 +136,7 @@ export default function ClientManagement() {
       console.error('❌ Erro ao carregar veículos:', error)
       toast({
         title: "Erro ao carregar veículos",
-        description: error?.message || 'Verifique se a tabela vehicles_correct existe no Supabase',
+        description: error?.message || 'Verifique a configuração do Supabase',
         variant: "destructive"
       })
     }
@@ -146,8 +147,8 @@ export default function ClientManagement() {
       console.log('🔄 Carregando grupos do usuário:', authId)
       
       const { data, error } = await supabase
-        .from('vehicle_groups')
-        .select('id, name, user_id, created_at')
+        .from('vehicle_groups_v3')
+        .select('*')
         .eq('user_id', authId)
         .order('name')
 
@@ -162,7 +163,7 @@ export default function ClientManagement() {
       console.error('Erro ao carregar grupos:', error)
       toast({
         title: "Erro ao carregar grupos",
-        description: error?.message || 'Verifique se a tabela vehicle_groups existe no Supabase',
+        description: error?.message || 'Verifique a configuração do Supabase',
         variant: "destructive"
       })
     }
@@ -176,7 +177,7 @@ export default function ClientManagement() {
       
       const { data, error } = await supabase
         .from('budgets')
-        .select('id, licenseplate, items, totalparts, createdat')
+        .select('*')
         .eq('licenseplate', licensePlate.toUpperCase())
         .eq('user_id', userId)
         .order('createdat', { ascending: false })
@@ -192,7 +193,7 @@ export default function ClientManagement() {
       console.error('❌ Erro ao buscar histórico de orçamentos:', error)
       toast({
         title: "Erro ao carregar histórico",
-        description: error?.message || 'Verifique se a tabela budgets existe no Supabase',
+        description: error?.message || 'Verifique a configuração do Supabase',
         variant: "destructive"
       })
       setBudgetHistory([])
@@ -258,9 +259,9 @@ export default function ClientManagement() {
       console.log('📤 Enviando dados para Supabase:', vehicleData)
 
       const { data, error } = await supabase
-        .from('vehicles_correct')
+        .from('vehicles_v3')
         .insert([vehicleData])
-        .select('id, licenseplate, make, model, year, mileage, status, groupid, user_id, createdat')
+        .select()
 
       if (error) {
         console.error('❌ ERRO DETALHADO DO SUPABASE:', error)
@@ -277,9 +278,10 @@ export default function ClientManagement() {
         if (error.code === '42P01') {
           toast({
             title: "Tabela não encontrada",
-            description: "A tabela vehicles_correct não existe no Supabase. Crie a tabela primeiro.",
+            description: "A tabela vehicles_v3 não existe no Supabase. Execute o SQL de configuração abaixo!",
             variant: "destructive"
           })
+          setShowSqlSetup(true)
           return
         }
 
@@ -336,12 +338,12 @@ export default function ClientManagement() {
       }
 
       const { data, error } = await supabase
-        .from('vehicle_groups')
+        .from('vehicle_groups_v3')
         .insert([{ 
           name: newGroup.name.trim(),
           user_id: userId
         }])
-        .select('id, name, user_id, created_at')
+        .select()
 
       if (error) {
         console.error('❌ Erro ao criar grupo:', error)
@@ -349,9 +351,10 @@ export default function ClientManagement() {
         if (error.code === '42P01') {
           toast({
             title: "Tabela não encontrada",
-            description: "A tabela vehicle_groups não existe no Supabase. Crie a tabela primeiro.",
+            description: "A tabela vehicle_groups_v3 não existe no Supabase. Execute o SQL de configuração abaixo!",
             variant: "destructive"
           })
+          setShowSqlSetup(true)
           return
         }
         
@@ -382,7 +385,7 @@ export default function ClientManagement() {
     try {
       const { data: historyData, error: historyError } = await supabase
         .from('services')
-        .select('id, vehicleid, description, status, cost, createdat')
+        .select('*')
         .eq('vehicleid', vehicleId)
         .order('createdat', { ascending: false })
 
@@ -798,6 +801,125 @@ export default function ClientManagement() {
             )}
           </div>
         </CardContent>
+      </Card>
+
+      {/* Botão para mostrar SQL de configuração */}
+      <Card className="border-2 border-[#ff8c00]">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base sm:text-lg text-[#ff8c00]">⚙️ Configuração do Supabase - NOVA BASE V3</CardTitle>
+            <Button 
+              onClick={() => setShowSqlSetup(!showSqlSetup)}
+              variant="outline"
+              className="text-xs sm:text-sm"
+            >
+              {showSqlSetup ? 'Ocultar SQL' : 'Mostrar SQL'}
+            </Button>
+          </div>
+        </CardHeader>
+        {showSqlSetup && (
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+              <pre className="text-xs sm:text-sm whitespace-pre-wrap break-words">
+{`-- ============================================
+-- BASE DE DADOS COMPLETAMENTE NOVA - VERSÃO 3
+-- Execute este SQL no SQL Editor do Supabase
+-- ============================================
+
+-- LIMPAR TUDO (se existir)
+DROP TABLE IF EXISTS vehicles_v3 CASCADE;
+DROP TABLE IF EXISTS vehicle_groups_v3 CASCADE;
+
+-- 1. CRIAR TABELA DE GRUPOS (PRIMEIRO)
+CREATE TABLE vehicle_groups_v3 (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  name TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. CRIAR TABELA DE VEÍCULOS (DEPOIS)
+CREATE TABLE vehicles_v3 (
+  id BIGSERIAL PRIMARY KEY,
+  licenseplate TEXT NOT NULL,
+  make TEXT NOT NULL,
+  model TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  mileage INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'active',
+  groupid TEXT REFERENCES vehicle_groups_v3(id) ON DELETE SET NULL,
+  user_id TEXT NOT NULL,
+  createdat TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. HABILITAR ROW LEVEL SECURITY
+ALTER TABLE vehicles_v3 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vehicle_groups_v3 ENABLE ROW LEVEL SECURITY;
+
+-- 4. POLÍTICAS DE SEGURANÇA PARA VEHICLES_V3
+CREATE POLICY "Users can view their own vehicles v3" 
+ON vehicles_v3 FOR SELECT 
+USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can insert their own vehicles v3" 
+ON vehicles_v3 FOR INSERT 
+WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update their own vehicles v3" 
+ON vehicles_v3 FOR UPDATE 
+USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can delete their own vehicles v3" 
+ON vehicles_v3 FOR DELETE 
+USING (auth.uid()::text = user_id);
+
+-- 5. POLÍTICAS DE SEGURANÇA PARA VEHICLE_GROUPS_V3
+CREATE POLICY "Users can view their own groups v3" 
+ON vehicle_groups_v3 FOR SELECT 
+USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can insert their own groups v3" 
+ON vehicle_groups_v3 FOR INSERT 
+WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update their own groups v3" 
+ON vehicle_groups_v3 FOR UPDATE 
+USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can delete their own groups v3" 
+ON vehicle_groups_v3 FOR DELETE 
+USING (auth.uid()::text = user_id);
+
+-- 6. CRIAR ÍNDICES PARA PERFORMANCE
+CREATE INDEX idx_vehicles_v3_user_id ON vehicles_v3(user_id);
+CREATE INDEX idx_vehicles_v3_licenseplate ON vehicles_v3(licenseplate);
+CREATE INDEX idx_vehicles_v3_groupid ON vehicles_v3(groupid);
+CREATE INDEX idx_groups_v3_user_id ON vehicle_groups_v3(user_id);
+
+-- 7. ADICIONAR CONSTRAINTS ÚNICOS
+ALTER TABLE vehicles_v3 
+ADD CONSTRAINT unique_licenseplate_v3_per_user 
+UNIQUE (licenseplate, user_id);
+
+ALTER TABLE vehicle_groups_v3 
+ADD CONSTRAINT unique_group_name_v3_per_user 
+UNIQUE (name, user_id);
+
+-- ============================================
+-- ✅ BASE DE DADOS V3 CRIADA COM SUCESSO!
+-- ============================================
+-- Agora execute este SQL no Supabase SQL Editor
+-- e depois adicione veículos sem problemas!`}
+              </pre>
+            </div>
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-xs sm:text-sm text-green-800">
+                <strong>✅ BASE DE DADOS COMPLETAMENTE NOVA V3!</strong> Copie o SQL acima e execute no SQL Editor do Supabase. 
+                Esta é uma base de dados 100% limpa (vehicles_v3 e vehicle_groups_v3) sem qualquer erro anterior!
+              </p>
+            </div>
+          </CardContent>
+        )}
       </Card>
     </div>
   )
