@@ -19,12 +19,14 @@ interface Vehicle {
   lastservice?: string
   status?: string
   groupid?: string | null
+  user_id?: string
   createdat?: string
 }
 
 interface Group {
   id: string
   name: string
+  user_id?: string
   created_at?: string
 }
 
@@ -70,6 +72,7 @@ export default function ClientManagement() {
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [showBudgetModal, setShowBudgetModal] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   const [newVehicle, setNewVehicle] = useState({
     licenseplate: '',
@@ -85,16 +88,40 @@ export default function ClientManagement() {
   })
 
   useEffect(() => {
-    loadVehicles()
-    loadGroups()
+    checkAuthAndLoadData()
   }, [])
 
-  const loadVehicles = async () => {
+  const checkAuthAndLoadData = async () => {
     try {
-      console.log('🔄 Carregando veículos...')
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar autenticado",
+          variant: "destructive"
+        })
+        return
+      }
+
+      console.log('✅ Usuário autenticado:', user.id)
+      setUserId(user.id)
+      
+      await loadVehicles(user.id)
+      await loadGroups(user.id)
+    } catch (error) {
+      console.error('❌ Erro ao verificar autenticação:', error)
+    }
+  }
+
+  const loadVehicles = async (authId: string) => {
+    try {
+      console.log('🔄 Carregando veículos do usuário:', authId)
+      
       const { data, error } = await supabase
         .from('vehicles_correct')
-        .select('*')
+        .select('id, licenseplate, make, model, year, mileage, status, groupid, user_id, createdat')
+        .eq('user_id', authId)
         .order('createdat', { ascending: false })
 
       if (error) {
@@ -106,15 +133,22 @@ export default function ClientManagement() {
       setVehicles(data || [])
     } catch (error: any) {
       console.error('❌ Erro ao carregar veículos:', error)
+      toast({
+        title: "Erro ao carregar veículos",
+        description: error?.message || 'Verifique se a tabela vehicles_correct existe no Supabase',
+        variant: "destructive"
+      })
     }
   }
 
-  const loadGroups = async () => {
+  const loadGroups = async (authId: string) => {
     try {
-      console.log('🔄 Carregando grupos...')
+      console.log('🔄 Carregando grupos do usuário:', authId)
+      
       const { data, error } = await supabase
         .from('vehicle_groups')
-        .select('*')
+        .select('id, name, user_id, created_at')
+        .eq('user_id', authId)
         .order('name')
 
       if (error) {
@@ -124,19 +158,27 @@ export default function ClientManagement() {
 
       console.log('✅ Grupos carregados:', data?.length || 0)
       setGroups(data || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar grupos:', error)
+      toast({
+        title: "Erro ao carregar grupos",
+        description: error?.message || 'Verifique se a tabela vehicle_groups existe no Supabase',
+        variant: "destructive"
+      })
     }
   }
 
   const loadBudgetHistory = async (licensePlate: string) => {
+    if (!userId) return
+
     try {
       console.log('📋 Carregando histórico de orçamentos para:', licensePlate)
       
       const { data, error } = await supabase
         .from('budgets')
-        .select('*')
+        .select('id, licenseplate, items, totalparts, createdat')
         .eq('licenseplate', licensePlate.toUpperCase())
+        .eq('user_id', userId)
         .order('createdat', { ascending: false })
 
       if (error) {
@@ -150,7 +192,7 @@ export default function ClientManagement() {
       console.error('❌ Erro ao buscar histórico de orçamentos:', error)
       toast({
         title: "Erro ao carregar histórico",
-        description: error?.message || 'Erro desconhecido',
+        description: error?.message || 'Verifique se a tabela budgets existe no Supabase',
         variant: "destructive"
       })
       setBudgetHistory([])
@@ -158,12 +200,22 @@ export default function ClientManagement() {
   }
 
   const handleAddVehicle = async () => {
+    if (!userId) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar autenticado",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       console.log('🚗 Tentando adicionar veículo:', {
         licenseplate: newVehicle.licenseplate,
         make: newVehicle.make,
         model: newVehicle.model,
-        groupid: newVehicle.groupid
+        groupid: newVehicle.groupid,
+        user_id: userId
       })
 
       // Validação básica
@@ -199,7 +251,8 @@ export default function ClientManagement() {
         year: newVehicle.year,
         mileage: newVehicle.mileage || 0,
         status: 'active',
-        groupid: newVehicle.groupid || null
+        groupid: newVehicle.groupid || null,
+        user_id: userId
       }
 
       console.log('📤 Enviando dados para Supabase:', vehicleData)
@@ -207,7 +260,7 @@ export default function ClientManagement() {
       const { data, error } = await supabase
         .from('vehicles_correct')
         .insert([vehicleData])
-        .select()
+        .select('id, licenseplate, make, model, year, mileage, status, groupid, user_id, createdat')
 
       if (error) {
         console.error('❌ ERRO DETALHADO DO SUPABASE:', error)
@@ -216,6 +269,15 @@ export default function ClientManagement() {
           toast({
             title: "Matrícula duplicada",
             description: "Esta matrícula já está cadastrada no sistema!",
+            variant: "destructive"
+          })
+          return
+        }
+
+        if (error.code === '42P01') {
+          toast({
+            title: "Tabela não encontrada",
+            description: "A tabela vehicles_correct não existe no Supabase. Crie a tabela primeiro.",
             variant: "destructive"
           })
           return
@@ -240,18 +302,27 @@ export default function ClientManagement() {
         groupid: ''
       })
       setShowAddVehicle(false)
-      loadVehicles()
+      loadVehicles(userId)
     } catch (error: any) {
       console.error('❌ ERRO CRÍTICO ao adicionar veículo:', error)
       toast({
         title: "Erro ao adicionar veículo",
-        description: error?.message || 'Erro desconhecido',
+        description: error?.message || 'Erro desconhecido ao adicionar veículo',
         variant: "destructive"
       })
     }
   }
 
   const handleAddGroup = async () => {
+    if (!userId) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar autenticado",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       console.log('📁 Tentando criar grupo:', newGroup)
 
@@ -266,11 +337,24 @@ export default function ClientManagement() {
 
       const { data, error } = await supabase
         .from('vehicle_groups')
-        .insert([{ name: newGroup.name.trim() }])
-        .select()
+        .insert([{ 
+          name: newGroup.name.trim(),
+          user_id: userId
+        }])
+        .select('id, name, user_id, created_at')
 
       if (error) {
         console.error('❌ Erro ao criar grupo:', error)
+        
+        if (error.code === '42P01') {
+          toast({
+            title: "Tabela não encontrada",
+            description: "A tabela vehicle_groups não existe no Supabase. Crie a tabela primeiro.",
+            variant: "destructive"
+          })
+          return
+        }
+        
         throw error
       }
 
@@ -283,12 +367,12 @@ export default function ClientManagement() {
       
       setNewGroup({ name: '' })
       setShowAddGroup(false)
-      loadGroups()
+      loadGroups(userId)
     } catch (error: any) {
       console.error('❌ Erro ao criar grupo:', error)
       toast({
         title: "Erro ao criar grupo",
-        description: error?.message || 'Erro desconhecido',
+        description: error?.message || 'Erro desconhecido ao criar grupo',
         variant: "destructive"
       })
     }
@@ -298,7 +382,7 @@ export default function ClientManagement() {
     try {
       const { data: historyData, error: historyError } = await supabase
         .from('services')
-        .select('*')
+        .select('id, vehicleid, description, status, cost, createdat')
         .eq('vehicleid', vehicleId)
         .order('createdat', { ascending: false })
 
@@ -600,7 +684,6 @@ export default function ClientManagement() {
                               minute: '2-digit'
                             })}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">Oficina: Anónimo</p>
                         </div>
                         <div className="text-left sm:text-right w-full sm:w-auto">
                           <p className="text-xs sm:text-sm text-gray-600">Total em Peças</p>

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
-import { Car, Wrench, Users, TrendingUp, Building2, Calendar } from 'lucide-react'
+import { Car, Wrench, Users, TrendingUp, Building2, Calendar, User } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Vehicle {
   id: number
@@ -14,6 +15,7 @@ interface Vehicle {
   mileage?: number
   status?: string
   groupid?: string
+  user_id?: string
   createdat?: string
 }
 
@@ -32,142 +34,127 @@ interface Budget {
   discount?: number
   total?: number
   status?: string
+  user_id?: string
   createdat?: string
 }
 
-interface GroupStats {
-  groupid: string
-  groupname: string
-  totalVehicles: number
-  totalServices: number
-  monthlyServices: number
-  totalRevenue: number
-  monthlyRevenue: number
+interface UserProfile {
+  id: string
+  auth_id: string
+  nome: string
+  email: string
+  foto_perfil?: string
+  nome_oficina: string
+  descricao_oficina?: string
+  morada: string
+  codigo_postal?: string
+  cidade: string
+  telefone: string
+  website?: string
+  horario_funcionamento?: string
+  data_criacao?: string
 }
 
 export default function Dashboard() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
-  const [groupStats, setGroupStats] = useState<GroupStats[]>([])
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    loadDashboardData()
+    checkAuthAndLoadData()
   }, [])
 
-  const loadDashboardData = async () => {
+  const checkAuthAndLoadData = async () => {
+    try {
+      // Obter usuário autenticado
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        toast.error('❌ Você precisa estar autenticado')
+        setLoading(false)
+        return
+      }
+
+      console.log('✅ Usuário autenticado:', user.id)
+      setUserId(user.id)
+
+      // Carregar dados do usuário
+      await loadDashboardData(user.id)
+    } catch (error) {
+      console.error('❌ Erro ao verificar autenticação:', error)
+      toast.error('Erro ao verificar autenticação')
+      setLoading(false)
+    }
+  }
+
+  const loadDashboardData = async (authId: string) => {
     try {
       setLoading(true)
 
-      console.log('🔄 Iniciando carregamento de dados do dashboard...')
+      console.log('🔄 Carregando dados do dashboard para usuário:', authId)
 
-      // Carregar veículos da tabela correta
-      console.log('📊 Buscando veículos...')
+      // Carregar perfil do usuário
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, auth_id, nome, email, foto_perfil, nome_oficina, descricao_oficina, morada, codigo_postal, cidade, telefone, website, horario_funcionamento, data_criacao')
+        .eq('auth_id', authId)
+        .single()
+
+      if (profileError) {
+        if (profileError.code !== 'PGRST116') {
+          console.error('❌ Erro ao carregar perfil:', profileError)
+        }
+      } else {
+        console.log('✅ Perfil carregado:', profileData)
+        setUserProfile(profileData)
+      }
+
+      // Carregar veículos do usuário
+      console.log('📊 Buscando veículos do usuário...')
       const { data: vehiclesData, error: vehiclesError } = await supabase
         .from('vehicles_correct')
-        .select('*')
+        .select('id, licenseplate, make, model, year, mileage, status, groupid, user_id, createdat')
+        .eq('user_id', authId)
         .order('createdat', { ascending: false })
 
       if (vehiclesError) {
         console.error('❌ Erro ao carregar veículos:', vehiclesError)
-        throw vehiclesError
+      } else {
+        console.log('✅ Veículos carregados:', vehiclesData?.length || 0)
+        setVehicles(vehiclesData || [])
       }
-      
-      console.log('✅ Veículos carregados:', vehiclesData?.length || 0)
-      setVehicles(vehiclesData || [])
 
-      // Carregar orçamentos/serviços da tabela budgets
-      console.log('📊 Buscando orçamentos/serviços...')
+      // Carregar orçamentos/serviços do usuário
+      console.log('📊 Buscando orçamentos/serviços do usuário...')
       const { data: budgetsData, error: budgetsError } = await supabase
         .from('budgets')
-        .select('*')
+        .select('id, vehicleid, clientname, servicetype, servicecategory, description, laborhours, laborrate, parts, subtotal, tax, discount, total, status, user_id, createdat')
+        .eq('user_id', authId)
         .order('createdat', { ascending: false })
 
       if (budgetsError) {
         console.error('❌ Erro ao carregar orçamentos:', budgetsError)
-        throw budgetsError
+      } else {
+        console.log('✅ Orçamentos carregados:', budgetsData?.length || 0)
+        setBudgets(budgetsData || [])
       }
-      
-      console.log('✅ Orçamentos carregados:', budgetsData?.length || 0)
-      setBudgets(budgetsData || [])
-
-      // Carregar grupos
-      const { data: groupsData } = await supabase
-        .from('groups')
-        .select('*')
-
-      // Calcular estatísticas por grupo
-      const statsMap = new Map<string, GroupStats>()
-      const now = new Date()
-
-      if (groupsData) {
-        for (const group of groupsData) {
-          const groupVehicles = vehiclesData?.filter(v => v.groupid === group.id) || []
-          
-          // Buscar orçamentos dos veículos deste grupo
-          const vehicleIds = groupVehicles.map(v => v.id)
-          const groupBudgets = budgetsData?.filter(b => vehicleIds.includes(b.vehicleid)) || []
-          
-          // Serviços do mês atual
-          const monthlyBudgets = groupBudgets.filter(budget => {
-            if (!budget.createdat) return false
-            const budgetDate = new Date(budget.createdat)
-            return budgetDate.getMonth() === now.getMonth() && budgetDate.getFullYear() === now.getFullYear()
-          })
-
-          // Receitas
-          const totalRevenue = groupBudgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
-          const monthlyRevenue = monthlyBudgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
-
-          statsMap.set(group.id, {
-            groupid: group.id,
-            groupname: group.name,
-            totalVehicles: groupVehicles.length,
-            totalServices: groupBudgets.length,
-            monthlyServices: monthlyBudgets.length,
-            totalRevenue: totalRevenue,
-            monthlyRevenue: monthlyRevenue
-          })
-        }
-      }
-
-      setGroupStats(Array.from(statsMap.values()))
 
       console.log('✅ Dashboard carregado com sucesso!')
 
     } catch (error: any) {
       console.error('❌ Erro ao carregar dados do dashboard:', error)
-      console.error('📋 Detalhes do erro:', {
-        message: error?.message,
-        details: error?.details,
-        hint: error?.hint,
-        code: error?.code
-      })
-      
-      setVehicles([])
-      setBudgets([])
-      setGroupStats([])
-      
-      let errorMessage = 'Erro ao carregar dados do dashboard.'
-      
-      if (error?.code === 'PGRST116') {
-        errorMessage = 'As tabelas necessárias não existem no banco de dados.'
-      } else if (error?.message?.includes('JWT')) {
-        errorMessage = 'Erro de autenticação. Faça login novamente.'
-      } else if (error?.message) {
-        errorMessage = `Erro: ${error.message}`
-      }
-      
-      alert(errorMessage)
+      toast.error('Erro ao carregar dados do dashboard')
     } finally {
       setLoading(false)
     }
   }
 
-  // Calcular estatísticas globais da plataforma
-  const totalVehiclesPlatform = vehicles.length
-  const totalServicesPlatform = budgets.length
-  const totalRevenuePlatform = budgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
+  // Calcular estatísticas do usuário
+  const totalVehicles = vehicles.length
+  const totalServices = budgets.length
+  const totalRevenue = budgets.reduce((sum, budget) => sum + (budget.total || 0), 0)
   
   const now = new Date()
   const servicesThisMonth = budgets.filter(budget => {
@@ -194,48 +181,95 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-      <h2 className="text-2xl sm:text-3xl font-bold">Dashboard - Visão Geral da Plataforma</h2>
+      <h2 className="text-2xl sm:text-3xl font-bold">Dashboard - Minha Oficina</h2>
       
-      {/* Estatísticas Globais da Plataforma */}
+      {/* Informação do Usuário */}
+      {userId && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-4 p-4">
+            <div className="flex items-center gap-2">
+              <User className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-sm font-semibold text-blue-800">
+                  {userProfile?.nome || 'Usuário'}
+                </p>
+                <p className="text-xs text-blue-600">
+                  {userProfile?.nome_oficina || 'Configure seu perfil'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Card de Perfil da Oficina */}
+      {userProfile && (
+        <Card className="border-[#ff8c00] border-2">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Building2 className="h-5 w-5 text-[#ff8c00]" />
+              {userProfile.nome_oficina}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="space-y-2">
+              {userProfile.descricao_oficina && (
+                <p className="text-sm text-gray-600">{userProfile.descricao_oficina}</p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <p><strong>📍 Morada:</strong> {userProfile.morada}, {userProfile.cidade}</p>
+                <p><strong>📞 Telefone:</strong> {userProfile.telefone}</p>
+                {userProfile.email && <p><strong>📧 Email:</strong> {userProfile.email}</p>}
+                {userProfile.website && <p><strong>🌐 Website:</strong> {userProfile.website}</p>}
+                {userProfile.horario_funcionamento && (
+                  <p className="sm:col-span-2"><strong>🕒 Horário:</strong> {userProfile.horario_funcionamento}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Estatísticas Totais */}
       <div className="space-y-2">
-        <h3 className="text-lg sm:text-xl font-semibold text-[#ff8c00]">📊 Estatísticas Globais</h3>
+        <h3 className="text-lg sm:text-xl font-semibold text-[#ff8c00]">📊 Estatísticas Totais</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Card className="border-[#ff8c00] border-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Veículos (Plataforma)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Veículos</CardTitle>
               <Car className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalVehiclesPlatform}</div>
-              <p className="text-xs text-muted-foreground">Todos os veículos cadastrados</p>
+              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalVehicles}</div>
+              <p className="text-xs text-muted-foreground">Veículos cadastrados</p>
             </CardContent>
           </Card>
 
           <Card className="border-[#ff8c00] border-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Serviços Totais (Plataforma)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Serviços Totais</CardTitle>
               <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalServicesPlatform}</div>
-              <p className="text-xs text-muted-foreground">Todos os serviços realizados</p>
+              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">{totalServices}</div>
+              <p className="text-xs text-muted-foreground">Serviços realizados</p>
             </CardContent>
           </Card>
 
           <Card className="border-[#ff8c00] border-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Receita Total (Plataforma)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Receita Total</CardTitle>
               <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#ff8c00]" />
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">€{totalRevenuePlatform.toFixed(2)}</div>
+              <div className="text-xl sm:text-2xl font-bold text-[#ff8c00]">€{totalRevenue.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">Faturamento total</p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Estatísticas Mensais da Plataforma */}
+      {/* Estatísticas Mensais */}
       <div className="space-y-2">
         <h3 className="text-lg sm:text-xl font-semibold text-blue-600">📅 Estatísticas Mensais (Mês Atual)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -261,55 +295,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      {/* Estatísticas por Oficina/Cliente */}
-      <div className="space-y-2">
-        <h3 className="text-lg sm:text-xl font-semibold text-green-600">🏢 Estatísticas por Oficina/Cliente</h3>
-        {groupStats.length === 0 ? (
-          <Card>
-            <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-              <p className="text-sm text-muted-foreground">Nenhum grupo/oficina cadastrado ainda.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-            {groupStats.map((stat) => (
-              <Card key={stat.groupid} className="border-green-600">
-                <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                    {stat.groupname}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="space-y-2 sm:space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm text-muted-foreground">Veículos:</span>
-                      <span className="font-bold text-sm sm:text-base">{stat.totalVehicles}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm text-muted-foreground">Serviços Totais:</span>
-                      <span className="font-bold text-sm sm:text-base">{stat.totalServices}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm text-muted-foreground">Serviços Este Mês:</span>
-                      <span className="font-bold text-blue-600 text-sm sm:text-base">{stat.monthlyServices}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm text-muted-foreground">Receita Total:</span>
-                      <span className="font-bold text-green-600 text-sm sm:text-base">€{stat.totalRevenue.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm text-muted-foreground">Receita Este Mês:</span>
-                      <span className="font-bold text-blue-600 text-sm sm:text-base">€{stat.monthlyRevenue.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Últimos Veículos e Serviços */}
@@ -366,11 +351,11 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Aviso sobre dados limpos */}
+      {/* Aviso sobre isolamento de dados */}
       <Card className="bg-green-50 border-green-400">
         <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
           <p className="text-xs sm:text-sm text-green-800">
-            ✅ <strong>Sistema Limpo:</strong> Todos os dados demo foram removidos. Novos usuários começam com estatísticas zeradas.
+            ✅ <strong>Dados Isolados:</strong> Você está vendo apenas os seus próprios dados. Cada usuário tem acesso exclusivo às suas informações.
           </p>
         </CardContent>
       </Card>
